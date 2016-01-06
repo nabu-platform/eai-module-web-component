@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import be.nabu.eai.module.authorization.vm.VMAuthorizationService;
 import be.nabu.eai.module.authorization.vm.VMServiceAuthorizer;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.artifacts.container.BaseContainerArtifact;
@@ -124,7 +125,10 @@ public class RESTVMService extends BaseContainerArtifact implements WebFragment,
 	@Override
 	public ServiceAuthorizer getAuthorizer(ServiceRuntime runtime) {
 		if (runtime.getService().equals(this) || runtime.getService().equals(getArtifact("implementation"))) {
-			return new VMServiceAuthorizer(getArtifact("security"));
+			VMAuthorizationService artifact = getArtifact("security");
+			if (artifact != null) {
+				return new VMServiceAuthorizer(artifact);
+			}
 		}
 		return null;
 	}
