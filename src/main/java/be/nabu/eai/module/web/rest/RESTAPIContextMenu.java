@@ -91,7 +91,7 @@ public class RESTAPIContextMenu implements EntryContextMenuProvider {
 			ExtensibleEntry parent = (ExtensibleEntry) entry.getParent();
 			parent.deleteChild(entry.getName(), false);
 			RESTVMManager manager = new RESTVMManager();
-			final RepositoryEntry newEntry = parent.createNode(entry.getName(), manager);
+			final RepositoryEntry newEntry = parent.createNode(entry.getName(), manager, true);
 			RESTVMService newInstance = new RESTVMGUIManager().newInstance(MainController.getInstance(), newEntry);
 			newInstance.addArtifact("api", iface, null);
 			if (implementation != null) {

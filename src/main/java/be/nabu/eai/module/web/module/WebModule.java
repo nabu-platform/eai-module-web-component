@@ -150,19 +150,19 @@ public class WebModule extends JAXBArtifact<WebModuleConfiguration> implements W
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private ResourceContainer<?> mapToVirtual(String path, ResourceContainer<?> pages) throws URISyntaxException {
 		path = path.replaceFirst("^[/]+", "").replaceFirst("[/]+$", "");
+		VirtualContainer container = new VirtualContainer(new URI(getId() + ":/"));
+		ResourceContainer<?> root = container;
 		if (path != null && !path.isEmpty()) {
-			VirtualContainer container = new VirtualContainer(new URI("repository:" + getId() + "/public/pages"));
 			for (String part : path.split("/")) {
 				VirtualContainer<?> child = new VirtualContainer(container, part);
 				container.addChild(part, child);
 				container = child;
 			}
-			for (Resource resource : pages) {
-				container.addChild(resource.getName(), resource);
-			}
-			pages = container;
 		}
-		return pages;
+		for (Resource resource : pages) {
+			container.addChild(resource.getName(), resource);
+		}
+		return root;
 	}
 
 	@Override
