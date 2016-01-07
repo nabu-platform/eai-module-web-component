@@ -32,6 +32,25 @@ public class RESTVMContextMenu implements EntryContextMenuProvider {
 							catch (IOException e) {
 								throw new RuntimeException(e);
 							}
+							MainController.getInstance().refresh(entry.getId());
+						}
+					});
+					return item;
+				}
+				else {
+					MenuItem item = new MenuItem("Remove Security");
+					item.setGraphic(MainController.loadGraphic("remove.png"));
+					item.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+						@Override
+						public void handle(ActionEvent arg0) {
+							service.removeArtifact("security");
+							try {
+								new RESTVMManager().save((ResourceEntry) entry, service);
+							}
+							catch (IOException e) {
+								throw new RuntimeException(e);
+							}
+							MainController.getInstance().refresh(entry.getId());
 						}
 					});
 					return item;

@@ -48,4 +48,8 @@ public class RESTVMGUIManager extends ContainerArtifactGUIManager<RESTVMService>
 		return restvmService;
 	}
 	
+	@Override
+	public String getCategory() {
+		return "Web";
+	}
 }

@@ -32,56 +32,86 @@ import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
 
 public class RESTVMService extends BaseContainerArtifact implements WebFragment, DefinedService, ServiceAuthorizerProvider {
 
-	private Map<String, List<EventSubscription<?, ?>>> subscriptions = new HashMap<String, List<EventSubscription<?,?>>>();
+	private Map<String, EventSubscription<?, ?>> subscriptions = new HashMap<String, EventSubscription<?, ?>>();
 	
 	public RESTVMService(String id) {
 		super(id);
 	}
 
-	@Override
-	public void start(WebArtifact artifact) throws IOException {
-		if (subscriptions.containsKey(artifact.getId())) {
-			stop(artifact);
-		}
-		subscriptions.put(artifact.getId(), new ArrayList<EventSubscription<?, ?>>());
-		WebRestListener listener = new WebRestListener(
-			artifact.getRepository(),
-			artifact.getServerPath(), 
-			artifact.getRealm(), 
-			artifact.getSessionProvider(), 
-			artifact.getPermissionHandler(), 
-			artifact.getRoleHandler(), 
-			artifact.getTokenValidator(), 
-			getArtifact(WebRestArtifact.class), 
-			getArtifact(SimpleVMServiceDefinition.class), 
-			artifact.getConfiguration().getCharset() == null ? Charset.defaultCharset() : Charset.forName(artifact.getConfiguration().getCharset()), 
-			!EAIResourceRepository.isDevelopment()
-		);
-		EventSubscription<HTTPRequest, HTTPResponse> subscription = artifact.getDispatcher().subscribe(HTTPRequest.class, listener);
-		subscription.filter(HTTPServerUtils.limitToPath(artifact.getServerPath()));
-		subscriptions.get(artifact.getId()).add(subscription);
+	private String getKey(WebArtifact artifact, String path) {
+		return artifact.getId() + ":" + path;
 	}
-
+	
 	@Override
-	public void stop(WebArtifact artifact) {
-		List<EventSubscription<?, ?>> list = subscriptions.get(artifact.getId());
-		if (list != null) {
-			for (EventSubscription<?, ?> subscription : list) {
-				subscription.unsubscribe();
+	public void start(WebArtifact artifact, String path) throws IOException {
+		String key = getKey(artifact, path);
+		if (subscriptions.containsKey(key)) {
+			stop(artifact, path);
+		}
+		String restPath = artifact.getServerPath();
+		if (path != null && !path.isEmpty() && !path.equals("/")) {
+			if (!restPath.endsWith("/")) {
+				restPath += "/";
 			}
-			list.clear();
+			restPath += path.replaceFirst("^[/]+", "");
+		}
+		synchronized(subscriptions) {
+			WebRestListener listener = new WebRestListener(
+				artifact.getRepository(),
+				restPath, 
+				artifact.getRealm(), 
+				artifact.getSessionProvider(), 
+				artifact.getPermissionHandler(), 
+				artifact.getRoleHandler(), 
+				artifact.getTokenValidator(), 
+				getArtifact(WebRestArtifact.class), 
+				getArtifact(SimpleVMServiceDefinition.class), 
+				artifact.getConfiguration().getCharset() == null ? Charset.defaultCharset() : Charset.forName(artifact.getConfiguration().getCharset()), 
+				!EAIResourceRepository.isDevelopment()
+			);
+			EventSubscription<HTTPRequest, HTTPResponse> subscription = artifact.getDispatcher().subscribe(HTTPRequest.class, listener);
+			subscription.filter(HTTPServerUtils.limitToPath(restPath));
+			subscriptions.put(key, subscription);
 		}
 	}
 
 	@Override
-	public List<Permission> getPermissions() {
+	public void stop(WebArtifact artifact, String path) {
+		String key = getKey(artifact, path);
+		if (subscriptions.containsKey(key)) {
+			synchronized(subscriptions) {
+				if (subscriptions.containsKey(key)) {
+					subscriptions.get(key).unsubscribe();
+					subscriptions.remove(key);
+				}
+			}
+		}
+	}
+	
+	private String getPath(String parent) throws IOException {
+		WebRestArtifact artifact = getArtifact(WebRestArtifact.class);
+		if (artifact.getConfiguration().getPath() == null || artifact.getConfiguration().getPath().isEmpty() || artifact.getConfiguration().getPath().trim().equals("/")) {
+			return parent;
+		}
+		else {
+			if (parent == null) {
+				return artifact.getConfiguration().getPath().trim();
+			}
+			else {
+				return parent.replaceFirst("[/]+$", "") + "/" + artifact.getConfiguration().getPath().trim().replaceFirst("^[/]+", "");
+			}
+		}
+	}
+
+	@Override
+	public List<Permission> getPermissions(WebArtifact webArtifact, String path) {
 		List<Permission> permissions = new ArrayList<Permission>();
 		WebRestArtifact artifact = getArtifact(WebRestArtifact.class);
 		permissions.add(new Permission() {
 			@Override
 			public String getContext() {
 				try {
-					return artifact.getConfiguration().getPath();
+					return getPath(path);
 				}
 				catch (Exception e) {
 					throw new RuntimeException(e);
@@ -101,8 +131,8 @@ public class RESTVMService extends BaseContainerArtifact implements WebFragment,
 	}
 
 	@Override
-	public boolean isStarted(WebArtifact artifact) {
-		return subscriptions.containsKey(artifact.getId()) && !subscriptions.get(artifact.getId()).isEmpty();
+	public boolean isStarted(WebArtifact artifact, String path) {
+		return subscriptions.containsKey(getKey(artifact, path));
 	}
 
 	@Override
