@@ -10,8 +10,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webRestArtifact")
-@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "role",
-			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output" })
+@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "role", "preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output" })
 public class RESTVMConfiguration {
 
 	private DefinedType input, output;

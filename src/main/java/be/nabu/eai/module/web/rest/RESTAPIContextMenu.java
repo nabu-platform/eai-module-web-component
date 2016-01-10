@@ -110,10 +110,11 @@ public class RESTAPIContextMenu implements EntryContextMenuProvider {
 					}
 					@Override
 					public String getId() {
-						return newEntry.getId() + ":api";
+						return "$self:api";
 					}
 				}));
 				MainController.getInstance().close(implementation.getId());
+				implementation.setId("$self:implementation");
 				newInstance.addArtifact("implementation", implementation, newInstance.getConfiguration(newInstance.getArtifact("implementation")));
 				Entry serviceEntry = entry.getRepository().getEntry(implementation.getId());
 				if (serviceEntry.getParent() instanceof ExtensibleEntry) {

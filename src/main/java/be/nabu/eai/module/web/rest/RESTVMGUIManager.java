@@ -33,12 +33,12 @@ public class RESTVMGUIManager extends ContainerArtifactGUIManager<RESTVMService>
 	@Override
 	public RESTVMService newInstance(MainController controller, RepositoryEntry entry, Value<?>...values) throws IOException {
 		RESTVMService restvmService = new RESTVMService(entry.getId());
-		WebRestArtifact webRestArtifact = new WebRestArtifact(entry.getId() + ":api", entry.getContainer(), entry.getRepository());
+		WebRestArtifact webRestArtifact = new WebRestArtifact("$self:api", entry.getContainer(), entry.getRepository());
 		restvmService.addArtifact("api", webRestArtifact, null);
 		Pipeline pipeline = new Pipeline(new Structure(), new Structure());
 		pipeline.setProperty(new ValueImpl<DefinedServiceInterface>(PipelineInterfaceProperty.getInstance(), webRestArtifact));
 		SimpleVMServiceDefinition service = new SimpleVMServiceDefinition(pipeline);
-		service.setId(entry.getId() + ":implementation");
+		service.setId("$self:implementation");
 		Map<String, String> configuration = new HashMap<String, String>();
 		configuration.put(VMServiceGUIManager.INTERFACE_EDITABLE, "false");
 		restvmService.addArtifact("implementation", service, configuration);

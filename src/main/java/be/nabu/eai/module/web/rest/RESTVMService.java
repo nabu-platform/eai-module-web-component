@@ -154,7 +154,8 @@ public class RESTVMService extends BaseContainerArtifact implements WebFragment,
 
 	@Override
 	public ServiceAuthorizer getAuthorizer(ServiceRuntime runtime) {
-		if (runtime.getService().equals(this) || runtime.getService().equals(getArtifact("implementation"))) {
+		// only run the authorization if it is a root service
+		if (runtime.getParent() == null && (runtime.getService().equals(this) || runtime.getService().equals(getArtifact("implementation")))) {
 			VMAuthorizationService artifact = getArtifact("security");
 			if (artifact != null) {
 				return new VMServiceAuthorizer(artifact);
