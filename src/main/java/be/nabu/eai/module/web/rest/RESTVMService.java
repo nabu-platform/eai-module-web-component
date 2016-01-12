@@ -24,11 +24,16 @@ import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceAuthorizer;
 import be.nabu.libs.services.api.ServiceAuthorizerProvider;
+import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceInstance;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
+import be.nabu.libs.services.vm.VMServiceInstance;
+import be.nabu.libs.types.api.ComplexContent;
 
 public class RESTVMService extends BaseContainerArtifact implements WebFragment, DefinedService, ServiceAuthorizerProvider {
 
@@ -64,8 +69,8 @@ public class RESTVMService extends BaseContainerArtifact implements WebFragment,
 				artifact.getPermissionHandler(), 
 				artifact.getRoleHandler(), 
 				artifact.getTokenValidator(), 
-				getArtifact(WebRestArtifact.class), 
-				getArtifact(SimpleVMServiceDefinition.class), 
+				getArtifact(WebRestArtifact.class),
+				this, 
 				artifact.getConfiguration().getCharset() == null ? Charset.defaultCharset() : Charset.forName(artifact.getConfiguration().getCharset()), 
 				!EAIResourceRepository.isDevelopment()
 			);
@@ -144,7 +149,17 @@ public class RESTVMService extends BaseContainerArtifact implements WebFragment,
 	@Override
 	public ServiceInstance newInstance() {
 		SimpleVMServiceDefinition artifact = getArtifact(SimpleVMServiceDefinition.class);
-		return artifact.newInstance();
+		final VMServiceInstance newInstance = artifact.newInstance();
+		return new ServiceInstance() {
+			@Override
+			public Service getDefinition() {
+				return RESTVMService.this;
+			}
+			@Override
+			public ComplexContent execute(ExecutionContext executionContext, ComplexContent input) throws ServiceException {
+				return newInstance.execute(executionContext, input);
+			}
+		};
 	}
 
 	@Override
