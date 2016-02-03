@@ -48,6 +48,12 @@
 		</dependency>
 		<dependency>
 			<groupId>nabu</groupId>
+			<artifactId>eai-module-web-application</artifactId>
+			<version>1.0-SNAPSHOT</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>nabu</groupId>
 			<artifactId>eai-module-authorization-vm</artifactId>
 			<version>1.0-SNAPSHOT</version>
 			<scope>provided</scope>

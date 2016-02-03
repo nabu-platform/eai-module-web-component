@@ -11,11 +11,11 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.module.web.application.WebApplication;
+import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
-import be.nabu.eai.repository.artifacts.web.WebArtifact;
-import be.nabu.eai.repository.artifacts.web.WebFragment;
 import be.nabu.libs.authentication.api.Permission;
 import be.nabu.libs.resources.VirtualContainer;
 import be.nabu.libs.resources.api.Resource;
@@ -39,7 +39,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 		super(id, directory, repository, "web-module.xml", WebComponentConfiguration.class);
 	}
 
-	private String getKey(WebArtifact artifact, String path) {
+	private String getKey(WebApplication artifact, String path) {
 		return artifact.getId() + ":" + path;
 	}
 	
@@ -58,7 +58,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	}
 	
 	@Override
-	public void start(WebArtifact artifact, String path) throws IOException {
+	public void start(WebApplication artifact, String path) throws IOException {
 		if (isStarted(artifact, path)) {
 			stop(artifact, path);
 		}
@@ -166,7 +166,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	}
 
 	@Override
-	public void stop(WebArtifact artifact, String path) {
+	public void stop(WebApplication artifact, String path) {
 		String key = getKey(artifact, path);
 		if (resources.containsKey(key)) {
 			synchronized(resources) {
@@ -201,7 +201,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	}
 
 	@Override
-	public List<Permission> getPermissions(WebArtifact artifact, String path) {
+	public List<Permission> getPermissions(WebApplication artifact, String path) {
 		try {
 			List<Permission> permissions = new ArrayList<Permission>();
 			List<WebFragment> webFragments = getConfiguration().getWebFragments();
@@ -220,7 +220,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	}
 
 	@Override
-	public boolean isStarted(WebArtifact artifact, String path) {
+	public boolean isStarted(WebApplication artifact, String path) {
 		String key = getKey(artifact, path);
 		return fragments.containsKey(key) || scripts.containsKey(key) || resources.containsKey(key);
 	}

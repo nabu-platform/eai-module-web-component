@@ -12,7 +12,7 @@ import be.nabu.libs.property.api.Value;
 public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfiguration, WebComponent>{
 
 	public WebComponentGUIManager() {
-		super("Web Module", WebComponent.class, new WebComponentManager(), WebComponentConfiguration.class);
+		super("Web Component", WebComponent.class, new WebComponentManager(), WebComponentConfiguration.class);
 	}
 
 	@Override
