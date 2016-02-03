@@ -1,4 +1,4 @@
-package be.nabu.eai.module.web.module;
+package be.nabu.eai.module.web.component;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,7 +21,7 @@ import be.nabu.libs.resources.VirtualContainer;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 
-public class WebModule extends JAXBArtifact<WebModuleConfiguration> implements WebFragment {
+public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment {
 
 	/**
 	 * In theory we could just scan the pub/priv and always remove the resources/scripts based on that
@@ -35,8 +35,8 @@ public class WebModule extends JAXBArtifact<WebModuleConfiguration> implements W
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
-	public WebModule(String id, ResourceContainer<?> directory, Repository repository) {
-		super(id, directory, repository, "web-module.xml", WebModuleConfiguration.class);
+	public WebComponent(String id, ResourceContainer<?> directory, Repository repository) {
+		super(id, directory, repository, "web-module.xml", WebComponentConfiguration.class);
 	}
 
 	private String getKey(WebArtifact artifact, String path) {

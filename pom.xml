@@ -2,10 +2,9 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nabu</groupId>
-	<artifactId>eai-module-web</artifactId>
-	<packaging>bundle</packaging>
+	<artifactId>eai-module-web-component</artifactId>
 	<version>1.0-SNAPSHOT</version>
-	<name>eai-module-web</name>
+	<name>eai-module-web-component</name>
 	<url>http://nabu.be</url>
 
 	<build>
@@ -15,15 +14,6 @@
 				<artifactId>maven-bundle-plugin</artifactId>
 				<version>2.3.7</version>
 				<extensions>true</extensions>
-				<configuration>
-					<instructions>
-						<Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
-						<Bundle-Name>${project.artifactId}</Bundle-Name>
-						<Bundle-Version>1.0.0</Bundle-Version>
-						<Export-Package>${project.groupId}.services.*</Export-Package>
-						<Service-Component>OSGI-INF/*.xml</Service-Component>
-					</instructions>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

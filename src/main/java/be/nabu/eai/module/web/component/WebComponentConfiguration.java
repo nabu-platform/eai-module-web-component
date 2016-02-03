@@ -1,4 +1,4 @@
-package be.nabu.eai.module.web.module;
+package be.nabu.eai.module.web.component;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 
 @XmlRootElement(name = "webModule")
 @XmlType(propOrder = { "path", "webFragments" })
-public class WebModuleConfiguration {
+public class WebComponentConfiguration {
 	private String path;
 	private List<WebFragment> webFragments;
 	public String getPath() {
