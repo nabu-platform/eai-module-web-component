@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebFragment;
+import be.nabu.eai.module.web.application.WebFragmentConfiguration;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
@@ -20,6 +21,7 @@ import be.nabu.libs.authentication.api.Permission;
 import be.nabu.libs.resources.VirtualContainer;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
+import be.nabu.libs.types.api.ComplexType;
 
 public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment {
 
@@ -225,4 +227,41 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 		return fragments.containsKey(key) || scripts.containsKey(key) || resources.containsKey(key);
 	}
 
+	@Override
+	public List<WebFragmentConfiguration> getFragmentConfiguration() {
+		List<WebFragmentConfiguration> configurations = new ArrayList<WebFragmentConfiguration>();
+		try {
+			if (getConfiguration().getWebFragments() != null) {
+				final String path = getConfiguration().getPath().endsWith("/") ? getConfiguration().getPath() : getConfiguration().getPath() + "/";
+				for (WebFragment fragment : getConfiguration().getWebFragments()) {
+					List<WebFragmentConfiguration> fragmentConfiguration = fragment.getFragmentConfiguration();
+					if (fragmentConfiguration != null && !fragmentConfiguration.isEmpty()) {
+						// if the path is empty or only slashes, we don't add anything to the path
+						if (getConfiguration().getPath() == null || getConfiguration().getPath().trim().replace("/", "").isEmpty()) {
+							configurations.addAll(fragmentConfiguration);
+						}
+						else {
+							for (final WebFragmentConfiguration configuration : fragmentConfiguration) {
+								configurations.add(new WebFragmentConfiguration() {
+									@Override
+									public ComplexType getType() {
+										return configuration.getType();
+									}
+									@Override
+									public String getPath() {
+										return path + configuration.getPath().replaceFirst("^[/]+", "");
+									}
+								});
+							}
+						}
+					}
+				}
+			}
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return configurations;
+	}
+	
 }
