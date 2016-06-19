@@ -1,13 +1,28 @@
 package be.nabu.eai.module.web.component;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 
+import javafx.geometry.Side;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TabPane.TabClosingPolicy;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.managers.base.BaseJAXBGUIManager;
+import be.nabu.eai.module.web.application.WebApplication;
+import be.nabu.eai.module.web.application.WebApplicationGUIManager;
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
+import be.nabu.libs.resources.VirtualContainer;
+import be.nabu.libs.resources.api.ManageableContainer;
+import be.nabu.libs.resources.api.Resource;
+import be.nabu.libs.resources.api.ResourceContainer;
 
 public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfiguration, WebComponent>{
 
@@ -30,4 +45,56 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		return "Web";
 	}
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Override
+	public void display(MainController controller, AnchorPane pane, final WebComponent artifact) {
+		VBox vbox = new VBox();
+		AnchorPane anchor = new AnchorPane();
+		display(artifact, anchor);
+		vbox.getChildren().addAll(anchor);
+		ScrollPane scroll = new ScrollPane();
+		scroll.setContent(vbox);
+		vbox.prefWidthProperty().bind(scroll.widthProperty().subtract(100));
+		
+		TabPane tabs = new TabPane();
+		tabs.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
+		tabs.setSide(Side.RIGHT);
+		Tab tab = new Tab("Configuration");
+		tab.setContent(scroll);
+		tab.setClosable(false);
+		tabs.getTabs().add(tab);
+		try {
+			tabs.getTabs().add(buildEditingTab(artifact));
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		
+		AnchorPane.setLeftAnchor(tabs, 0d);
+		AnchorPane.setRightAnchor(tabs, 0d);
+		AnchorPane.setTopAnchor(tabs, 0d);
+		AnchorPane.setBottomAnchor(tabs, 0d);
+		
+		pane.getChildren().add(tabs);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private Tab buildEditingTab(final WebComponent artifact) throws IOException, URISyntaxException {
+		ResourceContainer<?> publicDirectory = (ResourceContainer<?>) artifact.getDirectory().getChild(EAIResourceRepository.PUBLIC);
+		if (publicDirectory == null && artifact.getDirectory() instanceof ManageableContainer) {
+			publicDirectory = (ResourceContainer<?>) ((ManageableContainer<?>) artifact.getDirectory()).create(EAIResourceRepository.PUBLIC, Resource.CONTENT_TYPE_DIRECTORY);
+		}
+		ResourceContainer<?> privateDirectory = (ResourceContainer<?>) artifact.getDirectory().getChild(EAIResourceRepository.PRIVATE);
+		if (privateDirectory == null && artifact.getDirectory() instanceof ManageableContainer) {
+			privateDirectory = (ResourceContainer<?>) ((ManageableContainer<?>) artifact.getDirectory()).create(EAIResourceRepository.PRIVATE, Resource.CONTENT_TYPE_DIRECTORY);
+		}
+		VirtualContainer container = new VirtualContainer(null, "web");
+		if (publicDirectory != null) {
+			container.addChild(publicDirectory.getName(), publicDirectory);
+		}
+		if (privateDirectory != null) {
+			container.addChild(privateDirectory.getName(), privateDirectory);
+		}
+		return WebApplicationGUIManager.buildEditingTab(container);
+	}
 }
