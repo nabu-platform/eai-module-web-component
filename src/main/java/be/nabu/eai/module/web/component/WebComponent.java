@@ -49,7 +49,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	
 	private String getPath(String parent) throws IOException {
 		if (getConfiguration().getPath() == null || getConfiguration().getPath().isEmpty() || getConfiguration().getPath().trim().equals("/")) {
-			return parent;
+			return parent == null || parent.isEmpty() ? "/" : parent;
 		}
 		else {
 			if (parent == null) {
