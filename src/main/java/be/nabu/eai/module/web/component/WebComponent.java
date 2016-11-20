@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.module.web.application.WebFragmentConfiguration;
+import be.nabu.eai.module.web.application.WebFragmentProvider;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
@@ -25,7 +26,7 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.types.api.ComplexType;
 
-public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment {
+public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider {
 
 	/**
 	 * In theory we could just scan the pub/priv and always remove the resources/scripts based on that
@@ -280,6 +281,16 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 			throw new RuntimeException(e);
 		}
 		return configurations;
+	}
+
+	@Override
+	public List<WebFragment> getWebFragments() {
+		return getConfig().getWebFragments();
+	}
+
+	@Override
+	public String getRelativePath() {
+		return getConfig().getPath() == null ? "/" : getConfig().getPath();
 	}
 	
 }
