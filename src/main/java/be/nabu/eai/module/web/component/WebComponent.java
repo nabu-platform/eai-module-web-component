@@ -253,6 +253,9 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 			if (getConfiguration().getWebFragments() != null) {
 				final String path = getConfiguration().getPath().endsWith("/") ? getConfiguration().getPath() : getConfiguration().getPath() + "/";
 				for (WebFragment fragment : getConfiguration().getWebFragments()) {
+					if (fragment == null) {
+						continue;
+					}
 					List<WebFragmentConfiguration> fragmentConfiguration = fragment.getFragmentConfiguration();
 					if (fragmentConfiguration != null && !fragmentConfiguration.isEmpty()) {
 						// if the path is empty or only slashes, we don't add anything to the path
