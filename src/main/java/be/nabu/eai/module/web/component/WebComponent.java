@@ -21,6 +21,7 @@ import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.authentication.api.Permission;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.VirtualContainer;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -114,7 +115,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 				// we do _not_ map the private scripts as they are utilities used by the public scripts
 				// if however they had a dynamic namespace based on where they were mounted, it would be impossible to call them properly
 				artifact.addGlueScripts(scripts, false);
-				synchronized(scripts) {
+				synchronized(this.scripts) {
 					if (!this.scripts.containsKey(key)) {
 						this.scripts.put(key, new ArrayList<ResourceContainer<?>>());
 					}
@@ -133,6 +134,30 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 						}
 						this.resources.get(key).add(resources);
 					}
+				}
+			}
+			
+			Resource providedResources = ResourceUtils.resolve(privateDirectory, "provided/resources");
+			if (providedResources != null) {
+				artifact.addResources((ResourceContainer<?>) providedResources);
+				synchronized(this.resources) {
+					if (!this.resources.containsKey(key)) {
+						this.resources.put(key, new ArrayList<ResourceContainer<?>>());
+					}
+					this.resources.get(key).add((ResourceContainer<?>) providedResources);
+				}
+			}
+			
+			// externally provided scripts
+			Resource providedArtifacts = ResourceUtils.resolve(privateDirectory, "provided/artifacts");
+			if (providedArtifacts != null) {
+				logger.debug("Adding private provided artifacts found in: " + providedArtifacts);
+				artifact.addGlueScripts((ResourceContainer<?>) providedArtifacts, false);
+				synchronized(this.scripts) {
+					if (!this.scripts.containsKey(key)) {
+						this.scripts.put(key, new ArrayList<ResourceContainer<?>>());
+					}
+					this.scripts.get(key).add((ResourceContainer<?>) providedArtifacts);
 				}
 			}
 		}
