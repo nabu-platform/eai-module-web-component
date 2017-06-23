@@ -23,9 +23,15 @@ import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.authentication.api.Permission;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.VirtualContainer;
+import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
+import be.nabu.libs.resources.memory.MemoryItem;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.utils.io.IOUtils;
+import be.nabu.utils.io.api.ByteBuffer;
+import be.nabu.utils.io.api.ReadableContainer;
+import be.nabu.utils.io.api.WritableContainer;
 
 public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider {
 
@@ -203,6 +209,32 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 				VirtualContainer<?> child = new VirtualContainer(container, part);
 				container.addChild(part, child);
 				container = child;
+			}
+		}
+		Resource index = pages.getChild("index.glue");
+		if (index == null) {
+			index = pages.getChild("index.eglue");
+		}
+		if (index == null) {
+			index = pages.getChild("index.gcss");
+		}
+		// we register the index page with the same name as the container, this means if we mount for example "/documentation" and it there is a "/documentation/index.glue", it will be shown when accessing "/documentation"
+		if (index != null && container.getParent() != null) {
+			try {
+				MemoryItem resource = new MemoryItem(container.getName() + "." + index.getName().replaceFirst("^.*\\.([^.]+)$", "$1"));
+				WritableContainer<ByteBuffer> writable = resource.getWritable();
+				ReadableContainer<ByteBuffer> readable = ((ReadableResource) index).getReadable();
+				try {
+					IOUtils.copyBytes(readable, writable);
+				}
+				finally {
+					readable.close();
+					writable.close();
+				}
+				((VirtualContainer) container.getParent()).addChild(container.getName() + "." + index.getName().replaceFirst("^.*\\.([^.]+)$", "$1"), resource);
+			}
+			catch (IOException e) {
+				throw new RuntimeException("Could not re-register the index");
 			}
 		}
 		for (Resource resource : pages) {
