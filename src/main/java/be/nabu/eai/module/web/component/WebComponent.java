@@ -3,6 +3,7 @@ package be.nabu.eai.module.web.component;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,7 +21,13 @@ import be.nabu.eai.module.web.application.WebFragmentProvider;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
+import be.nabu.glue.api.ScriptRepository;
+import be.nabu.glue.core.repositories.ScannableScriptRepository;
 import be.nabu.libs.authentication.api.Permission;
+import be.nabu.libs.events.api.EventSubscription;
+import be.nabu.libs.http.api.HTTPEntity;
+import be.nabu.libs.http.api.HTTPRequest;
+import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.VirtualContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -43,6 +50,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	private Map<String, List<ResourceContainer<?>>> resources = new HashMap<String, List<ResourceContainer<?>>>();
 	private Map<String, List<ResourceContainer<?>>> scripts = new HashMap<String, List<ResourceContainer<?>>>();
 	private Map<String, List<WebFragment>> fragments = new HashMap<String, List<WebFragment>>();
+	private Map<String, List<EventSubscription<?, ?>>> subscriptions = new HashMap<String, List<EventSubscription<?, ?>>>();
 	private Map<String, String> paths = new HashMap<String, String>();
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
@@ -74,11 +82,29 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 		if (isStarted(artifact, path)) {
 			stop(artifact, path);
 		}
+		String key = getKey(artifact, path);
 		
 		ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 		ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
 		
-		String key = getKey(artifact, path);
+		ResourceContainer<?> meta = privateDirectory == null ? null : (ResourceContainer<?>) privateDirectory.getChild("meta");
+		ScriptRepository metaRepository = null;
+		
+		EventSubscription<HTTPResponse, HTTPResponse> postProcessor = null;
+		if (meta != null) {
+			synchronized(subscriptions) {
+				if (!subscriptions.containsKey(key)) {
+					subscriptions.put(key, new ArrayList<EventSubscription<?, ?>>());
+				}
+				metaRepository = new ScannableScriptRepository(null, meta, artifact.getParserProvider(), Charset.defaultCharset());
+				postProcessor = artifact.registerPostProcessor(metaRepository);
+				EventSubscription<HTTPRequest, HTTPEntity> preProcessor = artifact.registerPreProcessor(metaRepository);
+				subscriptions.get(key).add(preProcessor);
+				subscriptions.get(key).add(postProcessor);
+				preProcessor.promote();
+			}
+		}
+		
 		synchronized(paths) {
 			paths.put(key, getPath(path));
 		}
@@ -197,6 +223,9 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 				}
 			}
 		}
+		if (postProcessor != null) {
+			postProcessor.demote();
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -276,6 +305,16 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 				}
 			}
 		}
+		if (subscriptions.containsKey(key)) {
+			synchronized(subscriptions) {
+				if (subscriptions.containsKey(key)) {
+					for (EventSubscription<?, ?> subscription : subscriptions.get(key)) {
+						subscription.unsubscribe();
+					}
+					subscriptions.remove(key);
+				}
+			}
+		}
 	}
 
 	@Override
@@ -308,7 +347,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 		List<WebFragmentConfiguration> configurations = new ArrayList<WebFragmentConfiguration>();
 		try {
 			if (getConfiguration().getWebFragments() != null) {
-				final String path = getConfiguration().getPath().endsWith("/") ? getConfiguration().getPath() : getConfiguration().getPath() + "/";
+				final String path = getConfiguration().getPath() == null ? "/" : (getConfiguration().getPath().endsWith("/") ? getConfiguration().getPath() : getConfiguration().getPath() + "/");
 				for (WebFragment fragment : getConfiguration().getWebFragments()) {
 					if (fragment == null) {
 						continue;
