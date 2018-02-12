@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
 
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Side;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -12,10 +14,13 @@ import javafx.scene.control.TabPane.TabClosingPolicy;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
+import be.nabu.eai.developer.managers.base.BaseArtifactGUIInstance;
 import be.nabu.eai.developer.managers.base.BaseJAXBGUIManager;
-import be.nabu.eai.module.web.application.WebApplication;
+import be.nabu.eai.module.web.application.WebApplicationGUIInstance;
 import be.nabu.eai.module.web.application.WebApplicationGUIManager;
+import be.nabu.eai.module.web.application.WebApplicationGUIManager.EditingTab;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
@@ -26,6 +31,8 @@ import be.nabu.libs.resources.api.ResourceContainer;
 
 public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfiguration, WebComponent>{
 
+	private ObjectProperty<EditingTab> editingTab = new SimpleObjectProperty<EditingTab>();
+	
 	public WebComponentGUIManager() {
 		super("Web Component", WebComponent.class, new WebComponentManager(), WebComponentConfiguration.class);
 	}
@@ -45,7 +52,6 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		return "Web";
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public void display(MainController controller, AnchorPane pane, final WebComponent artifact) {
 		VBox vbox = new VBox();
@@ -64,7 +70,8 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		tab.setClosable(false);
 		tabs.getTabs().add(tab);
 		try {
-			tabs.getTabs().add(buildEditingTab(artifact));
+			editingTab.set(buildEditingTab(artifact));
+			tabs.getTabs().add(editingTab.get().getTab());
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
@@ -79,7 +86,7 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private Tab buildEditingTab(final WebComponent artifact) throws IOException, URISyntaxException {
+	private EditingTab buildEditingTab(final WebComponent artifact) throws IOException, URISyntaxException {
 		ResourceContainer<?> publicDirectory = (ResourceContainer<?>) artifact.getDirectory().getChild(EAIResourceRepository.PUBLIC);
 		if (publicDirectory == null && artifact.getDirectory() instanceof ManageableContainer) {
 			publicDirectory = (ResourceContainer<?>) ((ManageableContainer<?>) artifact.getDirectory()).create(EAIResourceRepository.PUBLIC, Resource.CONTENT_TYPE_DIRECTORY);
@@ -95,6 +102,11 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		if (privateDirectory != null) {
 			container.addChild(privateDirectory.getName(), privateDirectory);
 		}
-		return WebApplicationGUIManager.buildEditingTab(container);
+		return WebApplicationGUIManager.buildEditingTab(artifact.getId(), container);
+	}
+	
+	@Override
+	protected BaseArtifactGUIInstance<WebComponent> newGUIInstance(Entry entry) {
+		return new WebApplicationGUIInstance<WebComponent>(this, entry, editingTab);
 	}
 }
