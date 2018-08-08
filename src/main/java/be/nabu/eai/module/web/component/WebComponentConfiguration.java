@@ -8,12 +8,14 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
+import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webModule")
-@XmlType(propOrder = { "path", "webFragments" })
+@XmlType(propOrder = { "path", "configurationType", "webFragments" })
 public class WebComponentConfiguration {
 	private String path;
 	private List<WebFragment> webFragments;
+	private List<DefinedType> configurationType;
 	public String getPath() {
 		return path;
 	}
@@ -27,4 +29,11 @@ public class WebComponentConfiguration {
 	public void setWebFragments(List<WebFragment> webFragments) {
 		this.webFragments = webFragments;
 	}
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public List<DefinedType> getConfigurationType() {
+		return configurationType;
+	}
+	public void setConfigurationType(List<DefinedType> configurationType) {
+		this.configurationType = configurationType;
+	}	
 }

@@ -35,12 +35,33 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.memory.MemoryItem;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
 public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider {
+
+	public static class WebFragmentConfigurationImplementation implements WebFragmentConfiguration {
+		private DefinedType type;
+		private String path;
+
+		public WebFragmentConfigurationImplementation(DefinedType type, String path) {
+			this.type = type;
+			this.path = path;
+		}
+
+		@Override
+		public ComplexType getType() {
+			return (ComplexType) type;
+		}
+
+		@Override
+		public String getPath() {
+			return path;
+		}
+	}
 
 	/**
 	 * In theory we could just scan the pub/priv and always remove the resources/scripts based on that
@@ -346,6 +367,11 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	public List<WebFragmentConfiguration> getFragmentConfiguration() {
 		List<WebFragmentConfiguration> configurations = new ArrayList<WebFragmentConfiguration>();
 		try {
+			if (getConfig().getConfigurationType() != null) {
+				for (DefinedType type : getConfig().getConfigurationType()) {
+					configurations.add(new WebFragmentConfigurationImplementation(type, getConfig().getPath()));
+				}
+			}
 			if (getConfiguration().getWebFragments() != null) {
 				final String path = getConfiguration().getPath() == null ? "/" : (getConfiguration().getPath().endsWith("/") ? getConfiguration().getPath() : getConfiguration().getPath() + "/");
 				for (WebFragment fragment : getConfiguration().getWebFragments()) {
