@@ -1,0 +1,1 @@
+A lightweight container that can be used to group reusable web fragments and/or code.
