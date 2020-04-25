@@ -18,6 +18,7 @@ import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.module.web.application.WebFragmentConfiguration;
 import be.nabu.eai.module.web.application.WebFragmentProvider;
+import be.nabu.eai.module.web.application.api.RateLimit;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
@@ -356,6 +357,29 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 			throw new RuntimeException(e);
 		}
 	}
+
+	@Override
+	public List<RateLimit> getRateLimits(WebApplication artifact, String path) {
+		try {
+			List<RateLimit> rateLimits = new ArrayList<RateLimit>();
+			List<WebFragment> webFragments = getConfiguration().getWebFragments();
+			if (webFragments != null) {
+				for (WebFragment fragment : webFragments) {
+					if (fragment != null) {
+						List<RateLimit> children = fragment.getRateLimits(artifact, getPath(path));
+						if (children != null) {
+							rateLimits.addAll(children);
+						}
+					}
+				}
+			}
+			return rateLimits;
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 
 	@Override
 	public boolean isStarted(WebApplication artifact, String path) {

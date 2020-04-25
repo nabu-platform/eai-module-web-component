@@ -47,5 +47,38 @@
 			<artifactId>eai-module-authorization-vm</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		
+		<!-- for wizard only -->
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-jdbc-pool</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.services</groupId>
+			<artifactId>services-jdbc</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-http-server</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-web-resources</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-jdbc-h2</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-swagger</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<!-- end for wizard only -->
 	</dependencies>
 </project>
