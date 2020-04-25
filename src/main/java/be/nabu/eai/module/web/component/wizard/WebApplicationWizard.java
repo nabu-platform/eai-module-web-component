@@ -8,7 +8,6 @@ import java.util.Map;
 
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.api.EntryContextMenuProvider;
-import be.nabu.eai.developer.impl.AsynchronousRemoteServer;
 import be.nabu.eai.module.http.server.HTTPServerArtifact;
 import be.nabu.eai.module.http.server.HTTPServerManager;
 import be.nabu.eai.module.http.virtual.VirtualHostArtifact;
@@ -22,6 +21,7 @@ import be.nabu.eai.module.swagger.provider.SwaggerProviderManager;
 import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebApplicationManager;
 import be.nabu.eai.module.web.application.WebFragment;
+import be.nabu.eai.module.web.application.resource.WebBrowser;
 import be.nabu.eai.module.web.component.WebComponent;
 import be.nabu.eai.module.web.component.WebComponentManager;
 import be.nabu.eai.module.web.resources.WebComponentContextMenu;
@@ -29,6 +29,7 @@ import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.eai.server.RemoteServer;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceUtils;
@@ -77,7 +78,8 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 	// don't really need _any_ config information
 	private void createWebApplication(Entry entry) {
 		try {
-			AsynchronousRemoteServer remote = MainController.getInstance().getAsynchronousRemoteServer();
+//			AsynchronousRemoteServer remote = MainController.getInstance().getAsynchronousRemoteServer();
+			RemoteServer remote = MainController.getInstance().getServer().getRemote();
 			
 			List<Integer> currentPorts = new ArrayList<Integer>();
 			HTTPServerArtifact server = null;
@@ -151,7 +153,8 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 				 * jdbc:h2:file:C:/data/sample (Windows only)
 				 */
 				String property = System.getProperty("user.home", ".");
-				jdbc.getConfig().setJdbcUrl("jdbc:h2:file:" + property.replace("\\", "/") + "/" + entry.getName());
+				// we use the id as the name
+				jdbc.getConfig().setJdbcUrl("jdbc:h2:file:" + property.replace("\\", "/") + "/" + jdbc.getId());
 				// no extensible generics in place?
 				Object dialect = H2Dialect.class;
 				jdbc.getConfig().setDialect((Class<SQLDialect>) dialect);
@@ -197,6 +200,7 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			// application
 			RepositoryEntry applicationEntry = ((RepositoryEntry) entry).createNode("application", new WebApplicationManager(), true);
 			WebApplication application = new WebApplication(applicationEntry.getId(), applicationEntry.getContainer(), applicationEntry.getRepository());
+			application.getConfig().setHtml5Mode(true);
 			application.getConfig().setVirtualHost(host);
 			String path = "/";
 			while (paths.contains(path)) {
@@ -228,6 +232,8 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			
 			remote.reload(application.getId());
 			MainController.getInstance().getRepositoryBrowser().refresh();
+			
+			new WebBrowser(application).open();
 		}
 		catch (Exception e) {
 			MainController.getInstance().notify(e);
