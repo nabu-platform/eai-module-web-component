@@ -21,7 +21,7 @@ import be.nabu.eai.module.swagger.provider.SwaggerProviderManager;
 import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebApplicationManager;
 import be.nabu.eai.module.web.application.WebFragment;
-import be.nabu.eai.module.web.application.resource.WebBrowser;
+import be.nabu.eai.module.web.application.api.TargetAudience;
 import be.nabu.eai.module.web.component.WebComponent;
 import be.nabu.eai.module.web.component.WebComponentManager;
 import be.nabu.eai.module.web.resources.WebComponentContextMenu;
@@ -53,14 +53,28 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 		// it needs to be a writable directory
 		if (!entry.isNode() && entry instanceof RepositoryEntry) {
 			Menu menu = new Menu("Helper");
-			MenuItem item = new MenuItem("Create Web Application");
-			item.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+			MenuItem customer = new MenuItem("Create Customer Application");
+			MenuItem manager = new MenuItem("Create Technical Manager Application");
+			MenuItem business = new MenuItem("Create Business Manager Application");
+			customer.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
 				@Override
 				public void handle(ActionEvent arg0) {
-					createWebApplication(entry);
+					createWebApplication(entry, TargetAudience.CUSTOMER);
 				}
 			});
-			menu.getItems().add(item);
+			manager.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+				@Override
+				public void handle(ActionEvent arg0) {
+					createWebApplication(entry, TargetAudience.MANAGER);
+				}
+			});
+			business.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+				@Override
+				public void handle(ActionEvent arg0) {
+					createWebApplication(entry, TargetAudience.BUSINESS);
+				}
+			});
+			menu.getItems().addAll(customer, manager, business);
 			return menu;
 		}
 		return null;
@@ -76,7 +90,7 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 	}
 	
 	// don't really need _any_ config information
-	private void createWebApplication(Entry entry) {
+	private void createWebApplication(Entry entry, TargetAudience audience) {
 		try {
 //			AsynchronousRemoteServer remote = MainController.getInstance().getAsynchronousRemoteServer();
 			RemoteServer remote = MainController.getInstance().getServer().getRemote();
@@ -177,6 +191,15 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 				}
 				String collectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getProperties());
 				if (collectionName != null) {
+					// check if we have a parent structure with the same collection name, if that is the case, we skip this one
+					// for example all the restricted types from crud services don't need to be added
+					if (potential.getSuperType() != null) {
+						String parentCollectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getSuperType().getProperties());		
+						if (parentCollectionName != null && parentCollectionName.equals(collectionName)) {
+							continue;
+						}
+					}
+					
 					String id = ((DefinedType) potential).getId();
 					if (definedTypeNames.containsKey(id)) {
 						continue;
@@ -203,6 +226,14 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			application.getConfig().setHtml5Mode(true);
 			application.getConfig().setVirtualHost(host);
 			String path = "/";
+			switch (audience) {
+				case MANAGER: 
+					path += "manage";
+				break;
+				case BUSINESS:
+					path += "admin";
+				break;
+			}
 			while (paths.contains(path)) {
 				if (path.equals("/")) {
 					path += entry.getName();
@@ -215,12 +246,36 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			application.getConfig().setPath(path);
 			application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(component, swagger)));
 			
+			// add the cms all, task manage etc etc
+			// we add any component flagged as being standard for your target audience
+			for (WebComponent potential : MainController.getInstance().getRepository().getArtifacts(WebComponent.class)) {
+				if (audience.equals(potential.getConfig().getAudience()) && !application.getConfig().getWebFragments().contains(potential)) {
+					application.getConfig().getWebFragments().add(potential);
+				}
+			}
+			
 			// update the cms configuration to have the correct JDBC
 			ComplexContent configuration = application.getConfigurationFor(".*", (ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration"));
 			if (configuration == null) {
 				configuration = ((ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration")).newInstance();
 			}
 			configuration.set("connectionId", jdbc.getId());
+			
+			// set the security restrictions by default
+			switch(audience) {
+				case BUSINESS: 
+					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business")));
+				break;
+				case MANAGER:
+					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager")));
+				break;
+				case CUSTOMER:
+					configuration.set("passwordRegex", "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}");
+				break;
+			}
+			configuration.set("caseInsensitive", true);
+			configuration.set("masterdata/preloadedCategories", new ArrayList<String>(Arrays.asList("language", "attachmentGroup")));
+			
 			application.putConfiguration(configuration, null, false);
 			
 			new WebApplicationManager().save(applicationEntry, application);
@@ -233,7 +288,8 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			remote.reload(application.getId());
 			MainController.getInstance().getRepositoryBrowser().refresh();
 			
-			new WebBrowser(application).open();
+			//new WebBrowser(application).open();
+			MainController.getInstance().open(application.getId());
 		}
 		catch (Exception e) {
 			MainController.getInstance().notify(e);
