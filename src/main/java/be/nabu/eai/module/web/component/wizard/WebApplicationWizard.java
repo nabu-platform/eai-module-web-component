@@ -176,6 +176,9 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 				jdbc.getConfig().setAutoCommit(false);
 				jdbc.getConfig().setTranslationGet((DefinedService) entry.getRepository().resolve("nabu.cms.core.providers.translation.jdbc.get"));
 				jdbc.getConfig().setTranslationSet((DefinedService) entry.getRepository().resolve("nabu.cms.core.providers.translation.jdbc.set"));
+				// this should be the main database for the context of your application
+				// if other databases are added, we don't want to make sure the cms and other frameworks target this database by default
+				jdbc.getConfig().setContext(entry.getId().replaceAll("^([^.]+)\\..*", "$1"));
 			}
 			// autosync all collection-named complex types
 			if (jdbc.getConfig().getManagedTypes() == null) {
@@ -219,6 +222,9 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			MainController.getInstance().getServer().getRemote().reload(jdbc.getId());
 			// make sure we sync ddls
 			GenerateDatabaseScriptContextMenu.synchronizeManagedTypes(jdbc);
+			RepositoryEntry jdbcEntry = ((RepositoryEntry) entry.getRepository().getEntry(jdbc.getId()));
+			jdbcEntry.getNode().setName("Application Database");
+			jdbcEntry.saveNode();
 			
 			// application
 			RepositoryEntry applicationEntry = ((RepositoryEntry) entry).createNode("application", new WebApplicationManager(), true);
