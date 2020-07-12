@@ -393,6 +393,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 		try {
 			if (getConfig().getConfigurationType() != null) {
 				for (DefinedType type : getConfig().getConfigurationType()) {
+					// the path can be null here
 					configurations.add(new WebFragmentConfigurationImplementation(type, getConfig().getPath()));
 				}
 			}
@@ -410,6 +411,9 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 						}
 						else {
 							for (final WebFragmentConfiguration configuration : fragmentConfiguration) {
+								if (configuration == null) {
+									continue;
+								}
 								configurations.add(new WebFragmentConfiguration() {
 									@Override
 									public ComplexType getType() {
@@ -417,7 +421,7 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 									}
 									@Override
 									public String getPath() {
-										return path + configuration.getPath().replaceFirst("^[/]+", "");
+										return path + (configuration.getPath() == null ? "" : configuration.getPath().replaceFirst("^[/]+", ""));
 									}
 								});
 							}
