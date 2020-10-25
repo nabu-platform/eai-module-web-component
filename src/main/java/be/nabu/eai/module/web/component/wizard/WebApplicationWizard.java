@@ -40,6 +40,7 @@ import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.DefinedType;
+import be.nabu.libs.types.api.DefinedTypeRegistry;
 import be.nabu.libs.types.properties.CollectionNameProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -181,40 +182,49 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 				jdbc.getConfig().setContext(entry.getId().replaceAll("^([^.]+)\\..*", "$1"));
 			}
 			// autosync all collection-named complex types
-			if (jdbc.getConfig().getManagedTypes() == null) {
-				jdbc.getConfig().setManagedTypes(new ArrayList<DefinedType>());
+			if (jdbc.getConfig().getManagedModels() == null) {
+				jdbc.getConfig().setManagedModels(new ArrayList<DefinedTypeRegistry>());
 			}
-			Map<String, DefinedType> definedTypeNames = new HashMap<String, DefinedType>();
-			for (DefinedType managed : jdbc.getConfig().getManagedTypes()) {
-				definedTypeNames.put(managed.getId(), managed);
+			Map<String, DefinedTypeRegistry> definedModelNames = new HashMap<String, DefinedTypeRegistry>();
+			for (DefinedTypeRegistry managed : jdbc.getConfig().getManagedModels()) {
+				definedModelNames.put(managed.getId(), managed);
 			}
-			for (ComplexType potential : entry.getRepository().getArtifacts(ComplexType.class)) {
-				if (!(potential instanceof DefinedType)) {
-					continue;
-				}
-				String collectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getProperties());
-				if (collectionName != null) {
-					// check if we have a parent structure with the same collection name, if that is the case, we skip this one
-					// for example all the restricted types from crud services don't need to be added
-					if (potential.getSuperType() != null) {
-						String parentCollectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getSuperType().getProperties());		
-						if (parentCollectionName != null && parentCollectionName.equals(collectionName)) {
+			for (DefinedTypeRegistry registry : entry.getRepository().getArtifacts(DefinedTypeRegistry.class)) {
+				for (String namespace : registry.getNamespaces()) {
+					for (ComplexType potential : registry.getComplexTypes(namespace)) {
+						if (!(potential instanceof DefinedType)) {
 							continue;
 						}
+						String collectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getProperties());
+						if (collectionName != null) {
+//							// check if we have a parent structure with the same collection name, if that is the case, we skip this one
+//							// for example all the restricted types from crud services don't need to be added
+//							if (potential.getSuperType() != null) {
+//								String parentCollectionName = ValueUtils.getValue(CollectionNameProperty.getInstance(), potential.getSuperType().getProperties());		
+//								if (parentCollectionName != null && parentCollectionName.equals(collectionName)) {
+//									continue;
+//								}
+//							}
+							
+//							String id = ((DefinedType) potential).getId();
+//							if (definedTypeNames.containsKey(id)) {
+//								continue;
+//							}
+//							definedTypeNames.put(id, (DefinedType) potential);
+//							jdbc.getConfig().getManagedTypes().add((DefinedType) potential);
+							if (!definedModelNames.containsKey(registry.getId())) {
+								definedModelNames.put(registry.getId(), registry);
+								jdbc.getConfig().getManagedModels().add(registry);
+							}
+							break;
+						}
 					}
-					
-					String id = ((DefinedType) potential).getId();
-					if (definedTypeNames.containsKey(id)) {
-						continue;
-					}
-					definedTypeNames.put(id, (DefinedType) potential);
-					jdbc.getConfig().getManagedTypes().add((DefinedType) potential);
 				}
 			}
-			// if we have both the model and model version of something, remove the emodel
-			for (String id : definedTypeNames.keySet()) {
-				if (id.contains(".emodel.") && definedTypeNames.containsKey(id.replace(".emodel.", ".model."))) {
-					jdbc.getConfig().getManagedTypes().remove(definedTypeNames.get(id));
+			// if we have both the model and model version of something, remove the model one (we standardize on emodels as concept)
+			for (String id : definedModelNames.keySet()) {
+				if (id.contains("emodel") && definedModelNames.containsKey(id.replaceAll("\\bemodel\\b", "model"))) {
+					jdbc.getConfig().getManagedModels().remove(definedModelNames.get(id.replaceAll("\\bemodel\\b", "model")));
 				}
 			}
 			new JDBCPoolManager().save((ResourceEntry) entry.getRepository().getEntry(jdbc.getId()), jdbc);

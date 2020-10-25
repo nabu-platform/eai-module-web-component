@@ -32,6 +32,7 @@ import be.nabu.libs.resources.api.ResourceContainer;
 public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfiguration, WebComponent>{
 
 	private ObjectProperty<EditingTab> editingTab = new SimpleObjectProperty<EditingTab>();
+	private TabPane tabs;
 	
 	public WebComponentGUIManager() {
 		super("Web Component", WebComponent.class, new WebComponentManager(), WebComponentConfiguration.class);
@@ -62,25 +63,37 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		scroll.setContent(vbox);
 		vbox.prefWidthProperty().bind(scroll.widthProperty().subtract(100));
 		
-		TabPane tabs = new TabPane();
-		tabs.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
-		tabs.setSide(Side.RIGHT);
-		Tab tab = new Tab("Configuration");
-		tab.setContent(scroll);
-		tab.setClosable(false);
-		tabs.getTabs().add(tab);
-		try {
-			editingTab.set(buildEditingTab(artifact));
-			tabs.getTabs().add(editingTab.get().getTab());
+		// we keep a reference to the tabs so we can reload our artifact and yet keep the state
+		if (tabs == null) {
+			tabs = new TabPane();
+			tabs.setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
+			tabs.setSide(Side.RIGHT);
+			Tab tab = new Tab("Configuration");
+			tab.setId("configuration");
+			tab.setContent(scroll);
+			tab.setClosable(false);
+			tabs.getTabs().add(tab);
+			try {
+				editingTab.set(buildEditingTab(artifact));
+				tabs.getTabs().add(editingTab.get().getTab());
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+			
+			AnchorPane.setLeftAnchor(tabs, 0d);
+			AnchorPane.setRightAnchor(tabs, 0d);
+			AnchorPane.setTopAnchor(tabs, 0d);
+			AnchorPane.setBottomAnchor(tabs, 0d);
 		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
+		// we do refresh the configuration component though
+		else {
+			for (Tab tab : tabs.getTabs()) {
+				if ("configuration".equals(tab.getId())) {
+					tab.setContent(scroll);
+				}
+			}
 		}
-		
-		AnchorPane.setLeftAnchor(tabs, 0d);
-		AnchorPane.setRightAnchor(tabs, 0d);
-		AnchorPane.setTopAnchor(tabs, 0d);
-		AnchorPane.setBottomAnchor(tabs, 0d);
 		
 		pane.getChildren().add(tabs);
 	}

@@ -18,12 +18,16 @@ import be.nabu.eai.module.web.application.WebApplication;
 import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.module.web.application.WebFragmentConfiguration;
 import be.nabu.eai.module.web.application.WebFragmentProvider;
+import be.nabu.eai.module.web.application.api.FeaturedWebArtifact;
 import be.nabu.eai.module.web.application.api.RateLimit;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.glue.api.ScriptRepository;
 import be.nabu.glue.core.repositories.ScannableScriptRepository;
+import be.nabu.glue.impl.ImperativeSubstitutor;
+import be.nabu.libs.artifacts.FeatureImpl;
+import be.nabu.libs.artifacts.api.Feature;
 import be.nabu.libs.authentication.api.Permission;
 import be.nabu.libs.events.api.EventSubscription;
 import be.nabu.libs.http.api.HTTPEntity;
@@ -42,7 +46,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider {
+public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider, FeaturedWebArtifact {
 
 	public static class WebFragmentConfigurationImplementation implements WebFragmentConfiguration {
 		private DefinedType type;
@@ -347,7 +351,10 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 			if (webFragments != null) {
 				for (WebFragment fragment : webFragments) {
 					if (fragment != null) {
-						permissions.addAll(fragment.getPermissions(artifact, getPath(path)));
+						List<Permission> fragmentPermissions = fragment.getPermissions(artifact, getPath(path));
+						if (fragmentPermissions != null) {
+							permissions.addAll(fragmentPermissions);
+						}
 					}
 				}
 			}
@@ -444,6 +451,73 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 	@Override
 	public String getRelativePath() {
 		return getConfig().getPath() == null ? "/" : getConfig().getPath();
+	}
+	
+	// shameless copy from web application
+	private ArrayList<Feature> availableFeatures;
+	@Override
+	public List<Feature> getAvailableWebFeatures() {
+		if (availableFeatures == null || EAIResourceRepository.isDevelopment()) {
+			synchronized(this) {
+				if (availableFeatures == null || EAIResourceRepository.isDevelopment()) {
+					Map<String, Feature> features = new HashMap<String, Feature>();
+					try {
+						features(getDirectory(), true, features);
+					}
+					catch (IOException e) {
+						logger.error("Could not list features", e);
+					}
+					// recursively check includes, but only in web components and the like
+					// we only want to send features along that exist in javascript or the like, that get streamed to the frontend
+					// not features in for example rest services, they get picked up separately and should _not_ be sent to the frontend unless they are explicitly used there as well
+					if (getConfig().getWebFragments() != null) {
+						for (WebFragment fragment : getConfig().getWebFragments()) {
+							if (fragment instanceof FeaturedWebArtifact) {
+								List<Feature> childFeatures = ((FeaturedWebArtifact) fragment).getAvailableWebFeatures();
+								if (childFeatures != null) {
+									for (Feature feature : childFeatures) {
+										features.put(feature.getName(), feature);
+									}
+								}
+							}
+						}
+					}
+					availableFeatures = new ArrayList<Feature>(features.values());
+				}
+			}
+		}
+		return availableFeatures;
+	}
+	
+	private void features(ResourceContainer<?> container, boolean recursive, Map<String, Feature> features) throws IOException {
+		if (container != null) {
+			for (Resource resource : container) {
+				if (resource instanceof ReadableResource && resource.getName().matches(".*\\.(tpl|js|css|gcss|glue|json)")) {
+					ReadableContainer<ByteBuffer> readable = ((ReadableResource) resource).getReadable();
+					try {
+						byte[] bytes = IOUtils.toBytes(readable);
+						String source = new String(bytes, "UTF-8");
+						for (String key : ImperativeSubstitutor.getValues("@", source)) {
+							String category = null;
+							if (key.matches("(?s)^(?:.*?::|[a-zA-Z0-9.]+:).*")) {
+								category = key.replaceAll("(?s)^(?:(.*?)::|([a-zA-Z0-9.]+):).*", "$1$2");
+								key = key.replaceAll("(?s)^(?:.*?::|[a-zA-Z0-9.]+:)(.*)", "$1");
+							}
+							String unique = category + "::" + key;
+							if (!features.containsKey(unique)) {
+								features.put(unique, new FeatureImpl(category != null ? category : key, category != null ? key : null));
+							}
+						}
+					}
+					finally {
+						readable.close();
+					}
+				}
+				if (recursive && resource instanceof ResourceContainer) {
+					features((ResourceContainer<?>) resource, recursive, features);
+				}
+			}
+		}
 	}
 	
 }
