@@ -8,6 +8,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Side;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TabPane.TabClosingPolicy;
@@ -54,6 +55,14 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 	}
 	
 	@Override
+	protected String getDefaultValue(WebComponent instance, String property) {
+		if ("path".equals(property)) {
+			return "/";
+		}
+		return super.getDefaultValue(instance, property);
+	}
+
+	@Override
 	public void display(MainController controller, AnchorPane pane, final WebComponent artifact) {
 		VBox vbox = new VBox();
 		AnchorPane anchor = new AnchorPane();
@@ -61,7 +70,9 @@ public class WebComponentGUIManager extends BaseJAXBGUIManager<WebComponentConfi
 		vbox.getChildren().addAll(anchor);
 		ScrollPane scroll = new ScrollPane();
 		scroll.setContent(vbox);
-		vbox.prefWidthProperty().bind(scroll.widthProperty().subtract(100));
+//		vbox.prefWidthProperty().bind(scroll.widthProperty().subtract(100));
+		scroll.setFitToWidth(true);
+		scroll.setHbarPolicy(ScrollBarPolicy.NEVER);
 		
 		// we keep a reference to the tabs so we can reload our artifact and yet keep the state
 		if (tabs == null) {
