@@ -1,0 +1,3 @@
+be.nabu.eai.module.web.application.collection.ConsumerApplicationProvider
+be.nabu.eai.module.web.application.collection.AdministratorApplicationProvider
+be.nabu.eai.module.web.application.collection.ManagerApplicationProvider

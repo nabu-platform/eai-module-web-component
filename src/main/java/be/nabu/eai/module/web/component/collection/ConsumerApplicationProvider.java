@@ -1,0 +1,278 @@
+package be.nabu.eai.module.web.component.collection;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import be.nabu.eai.api.NamingConvention;
+import be.nabu.eai.developer.MainController;
+import be.nabu.eai.developer.api.ApplicationProvider;
+import be.nabu.eai.developer.collection.ApplicationManager;
+import be.nabu.eai.developer.collection.EAICollectionUtils;
+import be.nabu.eai.developer.util.EAIDeveloperUtils;
+import be.nabu.eai.module.http.server.HTTPServerArtifact;
+import be.nabu.eai.module.http.server.HTTPServerManager;
+import be.nabu.eai.module.http.virtual.VirtualHostArtifact;
+import be.nabu.eai.module.http.virtual.VirtualHostManager;
+import be.nabu.eai.module.swagger.provider.SwaggerProvider;
+import be.nabu.eai.module.swagger.provider.SwaggerProviderManager;
+import be.nabu.eai.module.web.application.WebApplication;
+import be.nabu.eai.module.web.application.WebApplicationManager;
+import be.nabu.eai.module.web.application.WebFragment;
+import be.nabu.eai.module.web.application.api.TargetAudience;
+import be.nabu.eai.module.web.component.WebComponent;
+import be.nabu.eai.module.web.component.WebComponentManager;
+import be.nabu.eai.module.web.resources.WebComponentContextMenu;
+import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.resources.ResourceUtils;
+import be.nabu.libs.resources.api.ManageableContainer;
+import be.nabu.libs.types.DefinedTypeResolverFactory;
+import be.nabu.libs.types.api.ComplexContent;
+import be.nabu.libs.types.api.ComplexType;
+import javafx.scene.Node;
+
+public class ConsumerApplicationProvider implements ApplicationProvider {
+
+	@Override
+	public Node getLargeIcon() {
+		return ApplicationManager.newNode("application/application-consumer.png", "Consumer Application", "A consumer-facing web application.");
+	}
+
+	@Override
+	public Node getSummaryView(Entry entry) {
+		// TODO Auto-generated method stub
+		return ApplicationProvider.super.getSummaryView(entry);
+	}
+
+	@Override
+	public void initialize(Entry newApplication) {
+		getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.CUSTOMER);
+	}
+	
+	public static <T extends Artifact> T getApplicationArtifact(Entry entry, Class<T> clazz, boolean allowProject) {
+		if (allowProject) {
+			entry = EAICollectionUtils.getProject(entry);
+		}
+		for (T potential : entry.getRepository().getArtifacts(clazz)) {
+			if (potential.getId().startsWith(entry.getId() + ".")) {
+				return potential;
+			}
+		}
+		return null;
+	}
+	
+	public static VirtualHostArtifact getOrCreateVirtualHost(RepositoryEntry applicationEntry) {
+		VirtualHostArtifact host = getApplicationArtifact(applicationEntry, VirtualHostArtifact.class, true);
+		if (host == null) {
+			try {
+				RepositoryEntry miscFolder = (RepositoryEntry) getSharedFolder(applicationEntry);
+				// build virtual host
+				RepositoryEntry hostEntry = miscFolder.createNode("host", new VirtualHostManager(), true);
+				host = new VirtualHostArtifact(hostEntry.getId(), hostEntry.getContainer(), hostEntry.getRepository());
+				host.getConfig().setServer(getOrCreateServer(applicationEntry));
+				new VirtualHostManager().save(hostEntry, host);
+				EAIDeveloperUtils.created(hostEntry.getId());
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return host;
+	}
+
+	public static HTTPServerArtifact getOrCreateServer(Entry applicationEntry) {
+		Entry projectEntry = EAICollectionUtils.getProject(applicationEntry);
+		List<Integer> currentPorts = new ArrayList<Integer>();
+		HTTPServerArtifact server = null;
+		// we want to check if there is already an http server in your project that we can use
+		for (HTTPServerArtifact potential : applicationEntry.getRepository().getArtifacts(HTTPServerArtifact.class)) {
+			if (potential.getConfig().getPort() != null) {
+				currentPorts.add(potential.getConfig().getPort());
+			}
+			// if it's in the application itself, it always wins
+			if (potential.getConfig().isEnabled() && potential.getId().startsWith(applicationEntry.getId() + ".")) {
+				server = potential;
+			}
+			// if it's in the project folder, it wins if we don't have anything else
+			else if (potential.getConfig().isEnabled() && potential.getId().startsWith(projectEntry.getId() + ".") && server == null) {
+				server = potential;
+			}
+		}
+		if (server == null) {
+			int port = 8080;
+			// get the first available port
+			while (currentPorts.indexOf(port) >= 0) {
+				port++;
+			}
+			try {
+				RepositoryEntry sharedFolder = (RepositoryEntry) getSharedFolder(applicationEntry);
+				RepositoryEntry serverEntry = sharedFolder.createNode("server", new HTTPServerManager(), true);
+				server = new HTTPServerArtifact(serverEntry.getId(), serverEntry.getContainer(), projectEntry.getRepository());
+				// build http server
+				server.getConfig().setPort(port);
+				server.getConfig().setEnabled(true);
+				new HTTPServerManager().save(serverEntry, server);
+				EAIDeveloperUtils.created(serverEntry.getId());
+			}
+			catch(Exception e) {
+				MainController.getInstance().notify(e);
+			}
+		}
+		return server;
+	}
+	
+	public static Entry getSharedFolder(Entry entry) {
+		// we start from the project
+		Entry projectEntry = EAICollectionUtils.getProject(entry);
+		// a folder there called "shared"
+		return EAIDeveloperUtils.mkdir((RepositoryEntry) projectEntry, "shared");
+	}
+
+	public static String getApplicationName(Entry applicationEntry) {
+		if (applicationEntry.getCollection() != null && applicationEntry.getCollection().getName() != null) {
+			return applicationEntry.getCollection().getName();
+		}
+		return NamingConvention.UPPER_TEXT.apply(applicationEntry.getName(), NamingConvention.LOWER_CAMEL_CASE);
+	}
+	
+	public static WebComponent getOrCreateAPIComponent(RepositoryEntry applicationEntry) {
+		try {
+			Entry child = applicationEntry.getChild("api");
+			if (child == null) {
+				RepositoryEntry componentEntry = applicationEntry.createNode("api", new WebComponentManager(), true);
+				child = componentEntry;
+				componentEntry.getNode().setName("API");
+				componentEntry.getNode().setTags(new ArrayList<String>(Arrays.asList("Main API")));
+				componentEntry.saveNode();
+				WebComponent component = new WebComponent(componentEntry.getId(), componentEntry.getContainer(), componentEntry.getRepository());
+				component.getConfig().setPath("/api/otr");
+				new WebComponentManager().save(componentEntry, component);
+				EAIDeveloperUtils.created(componentEntry.getId());
+			}
+			return (WebComponent) child.getNode().getArtifact();
+		}
+		catch (Exception e) {
+			MainController.getInstance().notify(e);
+		}
+		return null;
+	}
+	
+	public static SwaggerProvider getOrCreateSwagger(RepositoryEntry applicationEntry) {
+		SwaggerProvider provider = getApplicationArtifact(applicationEntry, SwaggerProvider.class, false);
+		if (provider == null) {
+			try {
+				RepositoryEntry swaggerEntry = applicationEntry.createNode("swagger", new SwaggerProviderManager(), true);
+				provider = new SwaggerProvider(swaggerEntry.getId(), swaggerEntry.getContainer(), swaggerEntry.getRepository());
+				// we can't set the base path for most applications, as cms etc don't fall under this path...
+				// this would remove things like remember, login etc...
+//				swagger.getConfig().setBasePath("/api/otr");
+				new SwaggerProviderManager().save(swaggerEntry, provider);
+				EAIDeveloperUtils.created(swaggerEntry.getId());
+			}
+			catch (Exception e) {
+				MainController.getInstance().notify(e);
+			}
+		}
+		return provider;
+	}
+	
+	public static WebApplication getOrCreateWebApplication(RepositoryEntry applicationEntry, TargetAudience audience) {
+		WebApplication application = getApplicationArtifact(applicationEntry, WebApplication.class, false);
+		if (application == null) {
+			try {
+				VirtualHostArtifact host = getOrCreateVirtualHost(applicationEntry);
+				
+				// check if there are already applications on the host, if so, we can't take their paths
+				List<String> paths = new ArrayList<String>();
+				for (WebApplication existing : applicationEntry.getRepository().getArtifacts(WebApplication.class)) {
+					if (host.equals(existing.getConfig().getVirtualHost())) {
+						paths.add(existing.getServerPath());
+					}
+				}
+				
+				RepositoryEntry entry = applicationEntry.createNode("application", new WebApplicationManager(), true);
+				entry.getNode().setName("Application");
+				entry.saveNode();
+				
+				application = new WebApplication(entry.getId(), entry.getContainer(), entry.getRepository());
+				application.getConfig().setHtml5Mode(true);
+				application.getConfig().setVirtualHost(host);
+				String path = "/";
+				switch (audience) {
+					case MANAGER: 
+						path += "manage";
+					break;
+					case BUSINESS:
+						path += "admin";
+					break;
+				}
+				while (paths.contains(path)) {
+					if (path.equals("/")) {
+						path += entry.getName();
+					}
+					// this will generate 1, 11, 111 instead of 1,2,3 but the edge case is rare enough that it doesn't matter?
+					else {
+						path += "1";
+					}
+				}
+				application.getConfig().setPath(path.equals("/") ? null : path);
+				// add the API and the swagger
+				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry), getOrCreateSwagger(applicationEntry))));
+				
+				// if we have swaggerui installed, add it
+				Artifact resolve = applicationEntry.getRepository().resolve("nabu.web.swagger.swaggerui");
+				if (resolve != null) {
+					application.getConfig().getWebFragments().add((WebFragment) resolve);
+				}
+				
+				// add the cms all, task manage etc etc
+				// we add any component flagged as being standard for your target audience
+				for (WebComponent potential : MainController.getInstance().getRepository().getArtifacts(WebComponent.class)) {
+					if (audience.equals(potential.getConfig().getAudience()) && !application.getConfig().getWebFragments().contains(potential)) {
+						application.getConfig().getWebFragments().add(potential);
+					}
+				}
+				
+				// update the cms configuration to have the correct JDBC
+				ComplexContent configuration = application.getConfigurationFor(".*", (ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration"));
+				if (configuration == null) {
+					configuration = ((ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration")).newInstance();
+				}
+//				configuration.set("connectionId", jdbc.getId());
+				
+				// set the security restrictions by default
+				switch(audience) {
+					case BUSINESS: 
+						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business")));
+					break;
+					case MANAGER:
+						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager")));
+					break;
+					case CUSTOMER:
+						configuration.set("passwordRegex", "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}");
+					break;
+				}
+				configuration.set("caseInsensitive", true);
+				configuration.set("masterdata/preloadedCategories", new ArrayList<String>(Arrays.asList("language", "attachmentGroup")));
+				
+				application.putConfiguration(configuration, null, false);
+				
+				new WebApplicationManager().save(entry, application);
+				
+				// fix the page builder template, this will already fix a lot of stuff
+				ManageableContainer<?> publicDirectory = (ManageableContainer<?>) ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PUBLIC);
+				ManageableContainer<?> privateDirectory = (ManageableContainer<?>) ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PRIVATE);
+				WebComponentContextMenu.copyPageWithCms(entry, publicDirectory, privateDirectory);
+				
+				EAIDeveloperUtils.created(entry.getId());
+			}
+			catch (Exception e) {
+				MainController.getInstance().notify(e);
+			}
+		}
+		return application;
+	}
+}
