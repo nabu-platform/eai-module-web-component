@@ -10,19 +10,28 @@ import javafx.scene.Node;
 public class AdministratorApplicationProvider implements ApplicationProvider {
 
 	@Override
-	public Node getLargeIcon() {
+	public Node getLargeCreateIcon() {
 		return ApplicationManager.newNode("application/application-administrator.png", "Administrator Application", "A backoffice oriented web application.");
+	}
+	
+	@Override
+	public String getSubType() {
+		return "administrator";
 	}
 
 	@Override
 	public Node getSummaryView(Entry entry) {
-		// TODO Auto-generated method stub
-		return ApplicationProvider.super.getSummaryView(entry);
+		return ConsumerApplicationProvider.getSummaryView(entry, "application/application-administrator.png");
 	}
 
 	@Override
 	public void initialize(Entry newApplication) {
 		ConsumerApplicationProvider.getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.BUSINESS);
+	}
+	
+	@Override
+	public String suggestName(Entry entry) {
+		return entry.getChild("admin") == null ? "Admin" : null;
 	}
 
 }

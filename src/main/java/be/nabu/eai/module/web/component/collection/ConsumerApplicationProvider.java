@@ -24,6 +24,7 @@ import be.nabu.eai.module.web.component.WebComponent;
 import be.nabu.eai.module.web.component.WebComponentManager;
 import be.nabu.eai.module.web.resources.WebComponentContextMenu;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Collection;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
@@ -32,19 +33,24 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
 
 public class ConsumerApplicationProvider implements ApplicationProvider {
 
 	@Override
-	public Node getLargeIcon() {
+	public Node getLargeCreateIcon() {
 		return ApplicationManager.newNode("application/application-consumer.png", "Consumer Application", "A consumer-facing web application.");
 	}
+	
 
 	@Override
-	public Node getSummaryView(Entry entry) {
-		// TODO Auto-generated method stub
-		return ApplicationProvider.super.getSummaryView(entry);
+	public String getSubType() {
+		return "consumer";
 	}
 
 	@Override
@@ -165,6 +171,8 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		if (provider == null) {
 			try {
 				RepositoryEntry swaggerEntry = applicationEntry.createNode("swagger", new SwaggerProviderManager(), true);
+				swaggerEntry.getNode().setName("Swagger");
+				swaggerEntry.saveNode();
 				provider = new SwaggerProvider(swaggerEntry.getId(), swaggerEntry.getContainer(), swaggerEntry.getRepository());
 				// we can't set the base path for most applications, as cms etc don't fall under this path...
 				// this would remove things like remember, login etc...
@@ -274,5 +282,20 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 			}
 		}
 		return application;
+	}
+
+	@Override
+	public String suggestName(Entry entry) {
+		return entry.getChild("site") == null ? "Site" : null;
+	}
+
+	public static Node getSummaryView(Entry entry, String icon) {
+		return ApplicationManager.buildSummaryView(entry, icon);
+	}
+
+
+	@Override
+	public Node getSummaryView(Entry entry) {
+		return getSummaryView(entry, "application/application-consumer.png");
 	}
 }
