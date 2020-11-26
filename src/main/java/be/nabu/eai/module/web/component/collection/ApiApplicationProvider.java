@@ -7,46 +7,45 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import javafx.scene.Node;
 
-public class ManagerApplicationProvider implements ApplicationProvider {
+public class ApiApplicationProvider implements ApplicationProvider {
 
 	@Override
 	public Node getLargeCreateIcon() {
-		return ApplicationManager.newNode("application/application-manager-large.png", "Manager Application", "A web application aimed at technical support.");
+		return ApplicationManager.newNode("application/api-large.png", "API Application", "A web application that exposes an API to third parties.");
 	}
 	
-
 	@Override
 	public String getSubType() {
-		return "manager";
+		return "api";
 	}
 
 	@Override
 	public Node getSummaryView(Entry entry) {
-		return ConsumerApplicationProvider.getSummaryView(entry, "application/application-manager-large.png");
-	}
-	
-	@Override
-	public void initialize(Entry newApplication) {
-		ConsumerApplicationProvider.getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.MANAGER);
+		return ConsumerApplicationProvider.getSummaryView(entry, "application/api-large.png");
 	}
 
 	@Override
-	public String suggestName(Entry entry) {
-		return entry.getChild("manage") == null ? "Manage" : null;
+	public void initialize(Entry newApplication) {
+		ConsumerApplicationProvider.getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.API);
 	}
 	
 	@Override
+	public String suggestName(Entry entry) {
+		return entry.getChild("api") == null ? "API" : null;
+	}
+
+	@Override
 	public String getMediumIcon() {
-		return "application/application-manager-medium.png";
+		return "application/api-medium.png";
 	}
 
 	@Override
 	public String getSmallIcon() {
-		return "application/application-manager-small.png";
+		return "application/api-small.png";
 	}
 
 	@Override
 	public String getLargeIcon() {
-		return "application/application-manager-large.png";
+		return "application/api-large.png";
 	}
 }

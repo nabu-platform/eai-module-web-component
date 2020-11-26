@@ -1,3 +1,4 @@
 be.nabu.eai.module.web.component.collection.ConsumerApplicationProvider
 be.nabu.eai.module.web.component.collection.AdministratorApplicationProvider
 be.nabu.eai.module.web.component.collection.ManagerApplicationProvider
+be.nabu.eai.module.web.component.collection.ApiApplicationProvider

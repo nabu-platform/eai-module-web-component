@@ -1,5 +1,6 @@
 package be.nabu.eai.module.web.component.collection;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -9,6 +10,7 @@ import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.api.ApplicationProvider;
 import be.nabu.eai.developer.collection.ApplicationManager;
 import be.nabu.eai.developer.collection.EAICollectionUtils;
+import be.nabu.eai.developer.impl.CustomTooltip;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.eai.module.http.server.HTTPServerArtifact;
 import be.nabu.eai.module.http.server.HTTPServerManager;
@@ -24,29 +26,30 @@ import be.nabu.eai.module.web.component.WebComponent;
 import be.nabu.eai.module.web.component.WebComponentManager;
 import be.nabu.eai.module.web.resources.WebComponentContextMenu;
 import be.nabu.eai.repository.EAIResourceRepository;
-import be.nabu.eai.repository.api.Collection;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.ManageableContainer;
+import be.nabu.libs.resources.api.Resource;
+import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
-import javafx.geometry.Pos;
+import be.nabu.utils.io.IOUtils;
+import be.nabu.utils.io.api.ByteBuffer;
+import be.nabu.utils.io.api.WritableContainer;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.TextAlignment;
+import javafx.scene.control.Button;
 
 public class ConsumerApplicationProvider implements ApplicationProvider {
 
 	@Override
 	public Node getLargeCreateIcon() {
-		return ApplicationManager.newNode("application/application-consumer.png", "Consumer Application", "A consumer-facing web application.");
+		return ApplicationManager.newNode("application/application-consumer-large.png", "Consumer Application", "A consumer-facing web application.");
 	}
-	
 
 	@Override
 	public String getSubType() {
@@ -144,7 +147,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		return NamingConvention.UPPER_TEXT.apply(applicationEntry.getName(), NamingConvention.LOWER_CAMEL_CASE);
 	}
 	
-	public static WebComponent getOrCreateAPIComponent(RepositoryEntry applicationEntry) {
+	public static WebComponent getOrCreateAPIComponent(RepositoryEntry applicationEntry, boolean isApi) {
 		try {
 			Entry child = applicationEntry.getChild("api");
 			if (child == null) {
@@ -154,7 +157,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				componentEntry.getNode().setTags(new ArrayList<String>(Arrays.asList("Main API")));
 				componentEntry.saveNode();
 				WebComponent component = new WebComponent(componentEntry.getId(), componentEntry.getContainer(), componentEntry.getRepository());
-				component.getConfig().setPath("/api/otr");
+				component.getConfig().setPath("/api/" + (isApi ? "v1" : "otr"));
 				new WebComponentManager().save(componentEntry, component);
 				EAIDeveloperUtils.created(componentEntry.getId());
 			}
@@ -166,7 +169,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		return null;
 	}
 	
-	public static SwaggerProvider getOrCreateSwagger(RepositoryEntry applicationEntry) {
+	public static SwaggerProvider getOrCreateSwagger(RepositoryEntry applicationEntry, boolean isApi) {
 		SwaggerProvider provider = getApplicationArtifact(applicationEntry, SwaggerProvider.class, false);
 		if (provider == null) {
 			try {
@@ -176,7 +179,9 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				provider = new SwaggerProvider(swaggerEntry.getId(), swaggerEntry.getContainer(), swaggerEntry.getRepository());
 				// we can't set the base path for most applications, as cms etc don't fall under this path...
 				// this would remove things like remember, login etc...
-//				swagger.getConfig().setBasePath("/api/otr");
+				if (isApi) {
+					provider.getConfig().setBasePath("/api/v1");
+				}
 				new SwaggerProviderManager().save(swaggerEntry, provider);
 				EAIDeveloperUtils.created(swaggerEntry.getId());
 			}
@@ -216,6 +221,9 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 					case BUSINESS:
 						path += "admin";
 					break;
+					case API:
+						application.getConfig().setAllowBasicAuthentication(true);
+					break;
 				}
 				while (paths.contains(path)) {
 					if (path.equals("/")) {
@@ -228,7 +236,8 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				}
 				application.getConfig().setPath(path.equals("/") ? null : path);
 				// add the API and the swagger
-				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry), getOrCreateSwagger(applicationEntry))));
+				boolean isApi = TargetAudience.API.equals(audience);
+				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, isApi), getOrCreateSwagger(applicationEntry, isApi))));
 				
 				// if we have swaggerui installed, add it
 				Artifact resolve = applicationEntry.getRepository().resolve("nabu.web.swagger.swaggerui");
@@ -273,7 +282,23 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				// fix the page builder template, this will already fix a lot of stuff
 				ManageableContainer<?> publicDirectory = (ManageableContainer<?>) ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PUBLIC);
 				ManageableContainer<?> privateDirectory = (ManageableContainer<?>) ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PRIVATE);
-				WebComponentContextMenu.copyPageWithCms(entry, publicDirectory, privateDirectory);
+				
+				// for API's we don't use page builder, we just add a redirect to the swaggerui
+				if (isApi) {
+					String content = "redirect(server.root() + 'swaggerui')";
+					ManageableContainer<?> pages = (ManageableContainer<?>) ResourceUtils.mkdirs(publicDirectory, "pages");
+					WritableResource create = (WritableResource) pages.create("index.glue", "text/glue");
+					WritableContainer<ByteBuffer> writable = create.getWritable();
+					try {
+						writable.write(IOUtils.wrap(content.getBytes(Charset.forName("UTF-8")), true));
+					}
+					finally {
+						writable.close();
+					}
+				}
+				else {
+					WebComponentContextMenu.copyPageWithCms(entry, publicDirectory, privateDirectory);
+				}
 				
 				EAIDeveloperUtils.created(entry.getId());
 			}
@@ -290,12 +315,44 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 	}
 
 	public static Node getSummaryView(Entry entry, String icon) {
-		return ApplicationManager.buildSummaryView(entry, icon);
+		WebApplication applicationArtifact = getApplicationArtifact(entry, WebApplication.class, false);
+		if (applicationArtifact != null) {
+			Button openSite = new Button();
+			openSite.setGraphic(MainController.loadFixedSizeGraphic("icons/eye.png", 16));
+			new CustomTooltip("View the web application").install(openSite);
+			openSite.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+				@Override
+				public void handle(ActionEvent arg0) {
+					MainController.getInstance().open(applicationArtifact.getId());
+				}
+			});
+			return ApplicationManager.buildSummaryView(entry, icon, openSite);
+		}
+		else {
+			// TODO: add a button to readd it?
+			return ApplicationManager.buildSummaryView(entry, icon);
+		}
 	}
 
 
 	@Override
 	public Node getSummaryView(Entry entry) {
-		return getSummaryView(entry, "application/application-consumer.png");
+		return getSummaryView(entry, "application/application-consumer-large.png");
 	}
+
+	@Override
+	public String getMediumIcon() {
+		return "application/application-consumer-medium.png";
+	}
+
+	@Override
+	public String getSmallIcon() {
+		return "application/application-consumer-small.png";
+	}
+
+	@Override
+	public String getLargeIcon() {
+		return "application/application-consumer-large.png";
+	}
+	
 }

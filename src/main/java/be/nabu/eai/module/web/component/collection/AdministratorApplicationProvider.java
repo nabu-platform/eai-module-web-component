@@ -11,7 +11,7 @@ public class AdministratorApplicationProvider implements ApplicationProvider {
 
 	@Override
 	public Node getLargeCreateIcon() {
-		return ApplicationManager.newNode("application/application-administrator.png", "Administrator Application", "A backoffice oriented web application.");
+		return ApplicationManager.newNode("application/application-administrator-large.png", "Administrator Application", "A backoffice oriented web application.");
 	}
 	
 	@Override
@@ -21,7 +21,7 @@ public class AdministratorApplicationProvider implements ApplicationProvider {
 
 	@Override
 	public Node getSummaryView(Entry entry) {
-		return ConsumerApplicationProvider.getSummaryView(entry, "application/application-administrator.png");
+		return ConsumerApplicationProvider.getSummaryView(entry, "application/application-administrator-large.png");
 	}
 
 	@Override
@@ -34,4 +34,18 @@ public class AdministratorApplicationProvider implements ApplicationProvider {
 		return entry.getChild("admin") == null ? "Admin" : null;
 	}
 
+	@Override
+	public String getMediumIcon() {
+		return "application/application-administrator-medium.png";
+	}
+
+	@Override
+	public String getSmallIcon() {
+		return "application/application-administrator-small.png";
+	}
+
+	@Override
+	public String getLargeIcon() {
+		return "application/application-administrator-large.png";
+	}
 }
