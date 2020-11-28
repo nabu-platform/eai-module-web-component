@@ -31,7 +31,6 @@ import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.ManageableContainer;
-import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.api.ComplexContent;
@@ -48,7 +47,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 
 	@Override
 	public Node getLargeCreateIcon() {
-		return ApplicationManager.newNode("application/application-consumer-large.png", "Consumer Application", "A consumer-facing web application.");
+		return ApplicationManager.newNode("application/application-consumer-large.png", "End-User Application", "An end-user facing web application.");
 	}
 
 	@Override
@@ -57,8 +56,10 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 	}
 
 	@Override
-	public void initialize(Entry newApplication) {
-		getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.CUSTOMER);
+	public void initialize(Entry newApplication, String version) {
+		getOrCreateWebApplication((RepositoryEntry) newApplication, version, TargetAudience.CUSTOMER);
+		// open it!
+		MainController.getInstance().open(newApplication.getId());
 	}
 	
 	public static <T extends Artifact> T getApplicationArtifact(Entry entry, Class<T> clazz, boolean allowProject) {
@@ -147,7 +148,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		return NamingConvention.UPPER_TEXT.apply(applicationEntry.getName(), NamingConvention.LOWER_CAMEL_CASE);
 	}
 	
-	public static WebComponent getOrCreateAPIComponent(RepositoryEntry applicationEntry, boolean isApi) {
+	public static WebComponent getOrCreateAPIComponent(RepositoryEntry applicationEntry, String version, boolean isApi) {
 		try {
 			Entry child = applicationEntry.getChild("api");
 			if (child == null) {
@@ -157,7 +158,12 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				componentEntry.getNode().setTags(new ArrayList<String>(Arrays.asList("Main API")));
 				componentEntry.saveNode();
 				WebComponent component = new WebComponent(componentEntry.getId(), componentEntry.getContainer(), componentEntry.getRepository());
-				component.getConfig().setPath("/api/" + (isApi ? "v1" : "otr"));
+				if (version != null) {
+					component.getConfig().setPath("/api/v" + NamingConvention.UNDERSCORE.apply(version));
+				}
+				else {
+					component.getConfig().setPath("/api/" + (isApi ? "v1" : "otr"));
+				}
 				new WebComponentManager().save(componentEntry, component);
 				EAIDeveloperUtils.created(componentEntry.getId());
 			}
@@ -169,7 +175,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		return null;
 	}
 	
-	public static SwaggerProvider getOrCreateSwagger(RepositoryEntry applicationEntry, boolean isApi) {
+	public static SwaggerProvider getOrCreateSwagger(RepositoryEntry applicationEntry, String version, boolean isApi) {
 		SwaggerProvider provider = getApplicationArtifact(applicationEntry, SwaggerProvider.class, false);
 		if (provider == null) {
 			try {
@@ -180,7 +186,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				// we can't set the base path for most applications, as cms etc don't fall under this path...
 				// this would remove things like remember, login etc...
 				if (isApi) {
-					provider.getConfig().setBasePath("/api/v1");
+					provider.getConfig().setBasePath("/api/v" + (version == null ? "1" : NamingConvention.UNDERSCORE.apply(version)));
 				}
 				new SwaggerProviderManager().save(swaggerEntry, provider);
 				EAIDeveloperUtils.created(swaggerEntry.getId());
@@ -192,7 +198,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		return provider;
 	}
 	
-	public static WebApplication getOrCreateWebApplication(RepositoryEntry applicationEntry, TargetAudience audience) {
+	public static WebApplication getOrCreateWebApplication(RepositoryEntry applicationEntry, String version, TargetAudience audience) {
 		WebApplication application = getApplicationArtifact(applicationEntry, WebApplication.class, false);
 		if (application == null) {
 			try {
@@ -237,7 +243,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				application.getConfig().setPath(path.equals("/") ? null : path);
 				// add the API and the swagger
 				boolean isApi = TargetAudience.API.equals(audience);
-				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, isApi), getOrCreateSwagger(applicationEntry, isApi))));
+				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, version, isApi), getOrCreateSwagger(applicationEntry, version,	 isApi))));
 				
 				// if we have swaggerui installed, add it
 				Artifact resolve = applicationEntry.getRepository().resolve("nabu.web.swagger.swaggerui");
@@ -263,10 +269,10 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				// set the security restrictions by default
 				switch(audience) {
 					case BUSINESS: 
-						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business")));
+						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business", "admin")));
 					break;
 					case MANAGER:
-						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager")));
+						configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager", "admin")));
 					break;
 					case CUSTOMER:
 						configuration.set("passwordRegex", "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}");
@@ -318,7 +324,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		WebApplication applicationArtifact = getApplicationArtifact(entry, WebApplication.class, false);
 		if (applicationArtifact != null) {
 			Button openSite = new Button();
-			openSite.setGraphic(MainController.loadFixedSizeGraphic("icons/eye.png", 16));
+			openSite.setGraphic(MainController.loadFixedSizeGraphic("icons/eye.png", 12));
 			new CustomTooltip("View the web application").install(openSite);
 			openSite.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
 				@Override

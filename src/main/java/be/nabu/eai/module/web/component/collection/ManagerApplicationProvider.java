@@ -26,8 +26,8 @@ public class ManagerApplicationProvider implements ApplicationProvider {
 	}
 	
 	@Override
-	public void initialize(Entry newApplication) {
-		ConsumerApplicationProvider.getOrCreateWebApplication((RepositoryEntry) newApplication, TargetAudience.MANAGER);
+	public void initialize(Entry newApplication, String version) {
+		ConsumerApplicationProvider.getOrCreateWebApplication((RepositoryEntry) newApplication, version, TargetAudience.MANAGER);
 	}
 
 	@Override
