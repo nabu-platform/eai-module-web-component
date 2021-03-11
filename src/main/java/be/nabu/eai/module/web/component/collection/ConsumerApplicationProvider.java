@@ -155,7 +155,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				RepositoryEntry componentEntry = applicationEntry.createNode("api", new WebComponentManager(), true);
 				child = componentEntry;
 				componentEntry.getNode().setName("API");
-				componentEntry.getNode().setTags(new ArrayList<String>(Arrays.asList("Main API")));
+				componentEntry.getNode().setTags(new ArrayList<String>(Arrays.asList("Api")));
 				componentEntry.saveNode();
 				WebComponent component = new WebComponent(componentEntry.getId(), componentEntry.getContainer(), componentEntry.getRepository());
 				if (version != null) {
@@ -225,7 +225,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 						path += "manage";
 					break;
 					case BUSINESS:
-						path += "admin";
+						path += "dashboard";
 					break;
 					case API:
 						application.getConfig().setAllowBasicAuthentication(true);

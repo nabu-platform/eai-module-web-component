@@ -19,9 +19,12 @@ import be.nabu.eai.module.web.application.WebFragment;
 import be.nabu.eai.module.web.application.WebFragmentConfiguration;
 import be.nabu.eai.module.web.application.WebFragmentProvider;
 import be.nabu.eai.module.web.application.api.FeaturedWebArtifact;
+import be.nabu.eai.module.web.application.api.ModifiableWebFragmentProvider;
 import be.nabu.eai.module.web.application.api.RateLimit;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.glue.api.ScriptRepository;
 import be.nabu.glue.core.repositories.ScannableScriptRepository;
@@ -46,7 +49,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider, FeaturedWebArtifact {
+public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implements WebFragment, WebFragmentProvider, FeaturedWebArtifact, ModifiableWebFragmentProvider {
 
 	public static class WebFragmentConfigurationImplementation implements WebFragmentConfiguration {
 		private DefinedType type;
@@ -517,6 +520,21 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 					features((ResourceContainer<?>) resource, recursive, features);
 				}
 			}
+		}
+	}
+
+	@Override
+	public void addFragment(WebFragment fragment) {
+		if (getConfig().getWebFragments() == null) {
+			getConfig().setWebFragments(new ArrayList<WebFragment>());
+		}
+		getConfig().getWebFragments().add(fragment);
+		Entry entry = getRepository().getEntry(getId());
+		try {
+			new WebComponentManager().save((ResourceEntry) entry, this);
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 	
