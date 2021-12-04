@@ -59,7 +59,8 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 	public void initialize(Entry newApplication, String version) {
 		getOrCreateWebApplication((RepositoryEntry) newApplication, version, TargetAudience.CUSTOMER);
 		// open it!
-		MainController.getInstance().open(newApplication.getId());
+		// note that the currenty entry is not the node itself? it is a folder that contains the node etc
+//		MainController.getInstance().open(newApplication.getId());
 	}
 	
 	public static <T extends Artifact> T getApplicationArtifact(Entry entry, Class<T> clazz, boolean allowProject) {
