@@ -1,9 +1,13 @@
 package be.nabu.eai.module.web.component.collection;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.api.NamingConvention;
 import be.nabu.eai.developer.MainController;
@@ -25,6 +29,7 @@ import be.nabu.eai.module.web.application.api.TargetAudience;
 import be.nabu.eai.module.web.component.WebComponent;
 import be.nabu.eai.module.web.component.WebComponentManager;
 import be.nabu.eai.module.web.resources.WebComponentContextMenu;
+import be.nabu.eai.repository.CollectionImpl;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
@@ -45,6 +50,8 @@ import javafx.scene.control.Button;
 
 public class ConsumerApplicationProvider implements ApplicationProvider {
 
+	private static Logger logger = LoggerFactory.getLogger(ConsumerApplicationProvider.class);
+	
 	@Override
 	public Node getLargeCreateIcon() {
 		return ApplicationManager.newNode("application/application-consumer-large.png", "End-User Application", "An end-user facing web application.");
@@ -82,7 +89,8 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				RepositoryEntry miscFolder = (RepositoryEntry) getSharedFolder(applicationEntry);
 				// build virtual host
 				RepositoryEntry hostEntry = miscFolder.createNode("host", new VirtualHostManager(), true);
-				host = new VirtualHostArtifact(hostEntry.getId(), hostEntry.getContainer(), hostEntry.getRepository());
+//				host = new VirtualHostArtifact(hostEntry.getId(), hostEntry.getContainer(), hostEntry.getRepository());
+				host = (VirtualHostArtifact) hostEntry.getNode().getArtifact();
 				host.getConfig().setServer(getOrCreateServer(applicationEntry));
 				new VirtualHostManager().save(hostEntry, host);
 				EAIDeveloperUtils.created(hostEntry.getId());
@@ -121,12 +129,16 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 			try {
 				RepositoryEntry sharedFolder = (RepositoryEntry) getSharedFolder(applicationEntry);
 				RepositoryEntry serverEntry = sharedFolder.createNode("server", new HTTPServerManager(), true);
-				server = new HTTPServerArtifact(serverEntry.getId(), serverEntry.getContainer(), projectEntry.getRepository());
+				EAIDeveloperUtils.created(serverEntry.getId());
+				// in local mode it might not work otherwise, probably to do with the version the server is seeing and this version
+				// if we get it from the node, we get the same reference as the server
+				//server = new HTTPServerArtifact(serverEntry.getId(), serverEntry.getContainer(), projectEntry.getRepository());
+				server = (HTTPServerArtifact) serverEntry.getNode().getArtifact();
 				// build http server
 				server.getConfig().setPort(port);
 				server.getConfig().setEnabled(true);
 				new HTTPServerManager().save(serverEntry, server);
-				EAIDeveloperUtils.created(serverEntry.getId());
+				EAIDeveloperUtils.updated(serverEntry.getId());
 			}
 			catch(Exception e) {
 				MainController.getInstance().notify(e);
@@ -139,7 +151,19 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		// we start from the project
 		Entry projectEntry = EAICollectionUtils.getProject(entry);
 		// a folder there called "shared"
-		return EAIDeveloperUtils.mkdir((RepositoryEntry) projectEntry, "shared");
+		Entry shared = EAIDeveloperUtils.mkdir((RepositoryEntry) projectEntry, "shared");
+		if (!shared.isCollection()) {
+			CollectionImpl collection = new CollectionImpl();
+			collection.setType("folder");
+			collection.setName("Shared");
+			collection.setSmallIcon("shared/shared-small.png");
+			collection.setMediumIcon("shared/shared-medium.png");
+			collection.setLargeIcon("shared/shared-big.png");
+			collection.setSubType("shared");
+			((RepositoryEntry) shared).setCollection(collection);
+			((RepositoryEntry) shared).saveCollection();
+		}
+		return shared;
 	}
 
 	public static String getApplicationName(Entry applicationEntry) {
@@ -204,6 +228,7 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 		if (application == null) {
 			try {
 				VirtualHostArtifact host = getOrCreateVirtualHost(applicationEntry);
+				logger.info("Getting virtual host for " + applicationEntry.getId() + ": " + host.getId());
 				
 				// check if there are already applications on the host, if so, we can't take their paths
 				List<String> paths = new ArrayList<String>();
@@ -216,8 +241,14 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				RepositoryEntry entry = applicationEntry.createNode("application", new WebApplicationManager(), true);
 				entry.getNode().setName("Application");
 				entry.saveNode();
+				EAIDeveloperUtils.created(entry.getId());
 				
-				application = new WebApplication(entry.getId(), entry.getContainer(), entry.getRepository());
+				// @2021-12-22: for some reason, creating a new application doesn't work, but getting it from the node does...don't want to get it into now
+				// the behavior was that when working locally (so not on remote server, there everything worked fine), this method would end up with a web application that does not have the virtual host configured nor the API/swagger component
+				// possibly something to do with all the reloading being triggered when working locally
+				// we actually use the other method (get artifact from node) more in general, so let's stick to that for now...
+//				application = new WebApplication(entry.getId(), entry.getContainer(), entry.getRepository());
+				application = (WebApplication) entry.getNode().getArtifact();
 				application.getConfig().setHtml5Mode(true);
 				application.getConfig().setVirtualHost(host);
 				String path = "/";
@@ -241,10 +272,12 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 						path += "1";
 					}
 				}
+				logger.info("Configured host: " + application.getConfig().getVirtualHost());
 				application.getConfig().setPath(path.equals("/") ? null : path);
 				// add the API and the swagger
 				boolean isApi = TargetAudience.API.equals(audience);
-				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, version, isApi), getOrCreateSwagger(applicationEntry, version,	 isApi))));
+				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, version, isApi), getOrCreateSwagger(applicationEntry, version, isApi))));
+				logger.info("Configured API and SWAGGER: " + application.getConfig().getWebFragments());
 				
 				// if we have swaggerui installed, add it
 				Artifact resolve = applicationEntry.getRepository().resolve("nabu.web.swagger.swaggerui");
@@ -284,7 +317,13 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				
 				application.putConfiguration(configuration, null, false);
 				
+				logger.info("Saving application into: " + entry.getId());
 				new WebApplicationManager().save(entry, application);
+				// refresh the entry so the node is reloaded!
+				// the code in the copy takes the artifact from the node
+				// if that is still the "old" version (so not updated from the save), we might be overwriting our changes above
+				entry.refresh(false);
+				logger.info("Saved application into: " + entry.getId());
 				
 				// fix the page builder template, this will already fix a lot of stuff
 				ManageableContainer<?> publicDirectory = (ManageableContainer<?>) ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PUBLIC);
@@ -307,9 +346,12 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 					WebComponentContextMenu.copyPageWithCms(entry, publicDirectory, privateDirectory);
 				}
 				
-				EAIDeveloperUtils.created(entry.getId());
+				EAIDeveloperUtils.updated(entry.getId());
+				// open the application
+				MainController.getInstance().open(entry.getId());
 			}
 			catch (Exception e) {
+				logger.error("Could not generate web application", e);
 				MainController.getInstance().notify(e);
 			}
 		}
