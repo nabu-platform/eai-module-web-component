@@ -274,6 +274,12 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				}
 				logger.info("Configured host: " + application.getConfig().getVirtualHost());
 				application.getConfig().setPath(path.equals("/") ? null : path);
+				// get the project it belongs to
+				Entry project = EAICollectionUtils.getProject(applicationEntry);
+				// we want a fixed realm, by default if you have multiple applications, we want the same realm
+				if (project != null) {
+					application.getConfig().setRealm(project.getName());
+				}
 				// add the API and the swagger
 				boolean isApi = TargetAudience.API.equals(audience);
 				application.getConfig().setWebFragments(new ArrayList<WebFragment>(Arrays.asList(getOrCreateAPIComponent(applicationEntry, version, isApi), getOrCreateSwagger(applicationEntry, version, isApi))));

@@ -448,6 +448,9 @@ public class WebComponent extends JAXBArtifact<WebComponentConfiguration> implem
 
 	@Override
 	public List<WebFragment> getWebFragments() {
+		if (getConfig().getWebFragments() == null) {
+			getConfig().setWebFragments(new ArrayList<WebFragment>());
+		}
 		return getConfig().getWebFragments();
 	}
 
