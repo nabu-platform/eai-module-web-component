@@ -271,28 +271,28 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 			}
 			
 			// update the cms configuration to have the correct JDBC
-			ComplexContent configuration = application.getConfigurationFor(".*", (ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration"));
-			if (configuration == null) {
-				configuration = ((ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration")).newInstance();
-			}
-			configuration.set("connectionId", jdbc.getId());
+//			ComplexContent configuration = application.getConfigurationFor(".*", (ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration"));
+//			if (configuration == null) {
+//				configuration = ((ComplexType) DefinedTypeResolverFactory.getInstance().getResolver().resolve("nabu.cms.core.configuration")).newInstance();
+//			}
+//			configuration.set("connectionId", jdbc.getId());
 			
 			// set the security restrictions by default
-			switch(audience) {
-				case BUSINESS: 
-					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business")));
-				break;
-				case MANAGER:
-					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager")));
-				break;
-				case CUSTOMER:
-					configuration.set("passwordRegex", "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}");
-				break;
-			}
-			configuration.set("caseInsensitive", true);
-			configuration.set("masterdata/preloadedCategories", new ArrayList<String>(Arrays.asList("language", "attachmentGroup")));
+//			switch(audience) {
+//				case BUSINESS: 
+//					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("business")));
+//				break;
+//				case MANAGER:
+//					configuration.set("security/allowedRoles", new ArrayList<String>(Arrays.asList("manager")));
+//				break;
+//				case CUSTOMER:
+//					configuration.set("passwordRegex", "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}");
+//				break;
+//			}
+//			configuration.set("caseInsensitive", true);
+//			configuration.set("masterdata/preloadedCategories", new ArrayList<String>(Arrays.asList("language", "attachmentGroup")));
 			
-			application.putConfiguration(configuration, null, false);
+//			application.putConfiguration(configuration, null, false);
 			
 			new WebApplicationManager().save(applicationEntry, application);
 			
