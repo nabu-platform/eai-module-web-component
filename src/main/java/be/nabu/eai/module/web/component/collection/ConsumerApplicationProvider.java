@@ -189,6 +189,22 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				else {
 					component.getConfig().setPath("/api/" + (isApi ? "v1" : "otr"));
 				}
+				if (!isApi) {
+					List<WebFragment> webFragments = component.getConfig().getWebFragments();
+					if (webFragments == null) {
+						webFragments = new ArrayList<WebFragment>();
+						component.getConfig().setWebFragments(webFragments);
+					}
+					for (String componentName : Arrays.asList("nabu.cms.core.v2.security.web.component", "nabu.cms.core.v2.language.component", "nabu.cms.core.v2.masterdata.component", "nabu.cms.core.v2.translation.component", "nabu.cms.oauth2.client.web.component", "nabu.web.page.core.v2.component")) {
+						Entry fragmentEntry = applicationEntry.getRepository().getEntry(componentName);
+						if (fragmentEntry != null) {
+							webFragments.add((WebFragment) fragmentEntry.getNode().getArtifact());
+						}
+						else {
+							System.out.println("Skipping non-existent component: " + component);
+						}
+					}
+				}
 				new WebComponentManager().save(componentEntry, component);
 				EAIDeveloperUtils.created(componentEntry.getId());
 			}
