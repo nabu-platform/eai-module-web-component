@@ -292,6 +292,9 @@ public class ConsumerApplicationProvider implements ApplicationProvider {
 				application.getConfig().setPath(path.equals("/") ? null : path);
 				// get the project it belongs to
 				Entry project = EAICollectionUtils.getProject(applicationEntry);
+				// generate explicitly so we can update the default later (?)
+//				application.getConfig().setRealm("main");
+				
 				// we want a fixed realm, by default if you have multiple applications, we want the same realm
 				if (project != null) {
 					application.getConfig().setRealm(project.getName());
