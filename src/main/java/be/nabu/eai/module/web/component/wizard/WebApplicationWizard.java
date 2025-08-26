@@ -30,7 +30,6 @@ import be.nabu.eai.module.http.server.HTTPServerManager;
 import be.nabu.eai.module.http.virtual.VirtualHostArtifact;
 import be.nabu.eai.module.http.virtual.VirtualHostManager;
 import be.nabu.eai.module.jdbc.context.GenerateDatabaseScriptContextMenu;
-import be.nabu.eai.module.jdbc.dialects.h2.H2Dialect;
 import be.nabu.eai.module.jdbc.pool.JDBCPoolArtifact;
 import be.nabu.eai.module.jdbc.pool.JDBCPoolManager;
 import be.nabu.eai.module.swagger.provider.SwaggerProvider;
@@ -188,7 +187,7 @@ public class WebApplicationWizard implements EntryContextMenuProvider {
 				// we use the id as the name
 				jdbc.getConfig().setJdbcUrl("jdbc:h2:file:" + property.replace("\\", "/") + "/" + jdbc.getId());
 				// no extensible generics in place?
-				Object dialect = H2Dialect.class;
+				Object dialect = Thread.currentThread().getContextClassLoader().loadClass("be.nabu.eai.module.jdbc.dialects.h2.H2Dialect");
 				jdbc.getConfig().setDialect((Class<SQLDialect>) dialect);
 				jdbc.getConfig().setDriverClassName("org.h2.Driver");
 				jdbc.getConfig().setAutoCommit(false);

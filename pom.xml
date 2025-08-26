@@ -65,11 +65,6 @@
 		</dependency>
 		<dependency>
 			<groupId>nabu</groupId>
-			<artifactId>eai-module-jdbc-h2</artifactId>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>nabu</groupId>
 			<artifactId>eai-module-swagger</artifactId>
 			<scope>provided</scope>
 		</dependency>
