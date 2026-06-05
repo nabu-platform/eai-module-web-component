@@ -13,11 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -381,11 +376,8 @@ public class WebComponentArtifactFragmentManager extends BaseNodeMetadataArtifac
 	}
 
 	private String toXml(Document document) throws Exception {
-		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		transformer.transform(new DOMSource(document), new StreamResult(output));
+		EAIRepositoryUtils.prettyPrint(document, output);
 		return new String(output.toByteArray(), StandardCharsets.UTF_8);
 	}
 
