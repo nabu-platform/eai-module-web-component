@@ -67,7 +67,7 @@ public class WebComponentArtifactFragmentManager extends BaseNodeMetadataArtifac
 	public List<ArtifactFragment> listFragments(final WebComponent artifact) {
 		List<ArtifactFragment> fragments = new ArrayList<ArtifactFragment>(getSharedFragments(artifact));
 		final Entry entry = EAIResourceRepository.getInstance().getEntry(artifact.getId());
-		final boolean editable = entry instanceof ResourceEntry;
+		final boolean editable = entry instanceof ResourceEntry && entry.isEditable();
 		fragments.add(new ArtifactFragment() {
 			@Override
 			public boolean isEditable() {
